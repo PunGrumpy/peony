@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  app:
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Check the tag against the app's version
+        run: |
+          version="$(jq -r .version apps/macos/package.json)"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::The tag is $GITHUB_REF_NAME but apps/macos/package.json says $version."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - run: bunx turbo run test package --filter=@peony/core --filter=@peony/macos
+      # pungrumpy/homebrew-tap reads SHA256SUMS from this release to update the cask.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # The same notes the site's changelog shows for this version.
+          awk -v heading="## $VERSION" '$0 == heading { found = 1; next } /^## / { found = 0 } found' \
+            apps/macos/CHANGELOG.md > notes.md
+          cd apps/macos/dist
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Peony $VERSION" --notes-file ../../../notes.md \
+            "Peony-$VERSION.dmg" "Peony-$VERSION.zip" SHA256SUMS
