@@ -1,22 +1,9 @@
-import { cn } from "cn";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 
+import { fonts } from "@/lib/fonts";
 import { url } from "@/lib/url";
 
 import "./globals.css";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-});
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-newsreader",
-});
 
 export const metadata: Metadata = {
   applicationName: "Peony",
@@ -37,11 +24,8 @@ export const viewport: Viewport = {
 };
 
 const RootLayout = ({ children }: LayoutProps<"/">) => (
-  <html
-    lang="en"
-    className={cn(geist.variable, geistMono.variable, newsreader.variable)}
-  >
-    <body className="min-h-dvh p-[5px] font-sans">{children}</body>
+  <html lang="en" className={fonts}>
+    <body className="min-h-dvh p-[5px]">{children}</body>
   </html>
 );
 
