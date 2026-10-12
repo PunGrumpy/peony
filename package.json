@@ -1,0 +1,22 @@
+{
+  "name": "peony",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "snapshots": "turbo run snapshots",
+    "icon": "turbo run icon",
+    "package": "turbo run package",
+    "install-app": "turbo run install-app"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.3"
+  },
+  "packageManager": "bun@1.4.3"
+}
