@@ -71,6 +71,8 @@ Add `--filter=@peony/macos` or `--filter=web` to run a task for one of them.
 
 Describe a change to the app with `bun changeset`. When changesets reach `main`, a workflow opens a "Version Packages" pull request; merging it bumps the version, tags it and publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks it up within the hour.
 
+The site deploys with each release, not on every push to `main`, so it never links to a download that isn't there yet. To publish a change that only touches the site, run the **Deploy website** workflow.
+
 See [CONTRIBUTING](.github/CONTRIBUTING.md) and the [security policy](.github/SECURITY.md).
 
 ## License
