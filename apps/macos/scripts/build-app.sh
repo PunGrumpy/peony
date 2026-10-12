@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Builds build/Peony.app with Command Line Tools alone. Set CODESIGN_IDENTITY for a
+# Developer ID build.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+export SDKROOT="${SDKROOT:-$(scripts/sdk.sh)}"
+# The version lives in package.json; the build number is the commit count.
+VERSION="$(sed -n 's/^  "version": "\(.*\)",$/\1/p' package.json)"
+APP=build/Peony.app
+ARCHS=(${ARCHS:-arm64 x86_64})
+
+swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --product Peony
+swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --product peony-helper
+BIN="$(swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --show-bin-path)"
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
+cp "$BIN/Peony" "$APP/Contents/MacOS/Peony"
+cp "$BIN/peony-helper" "$APP/Contents/Helpers/peony-helper"
+cp Resources/Info.plist "$APP/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$(git rev-list --count HEAD 2>/dev/null || echo 1)" "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+
+# Developer ID builds get the hardened runtime and a timestamp, which notarization needs.
+# Without one the app is signed ad-hoc and opens after Gatekeeper's Open Anyway.
+codesign=(codesign --force --sign "${CODESIGN_IDENTITY:--}")
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then codesign+=(--options runtime --timestamp); fi
+# Sign the nested helper first, since signing the bundle seals its hash.
+"${codesign[@]}" "$APP/Contents/Helpers/peony-helper"
+"${codesign[@]}" "$APP"
+echo "Built $APP ($VERSION)"
