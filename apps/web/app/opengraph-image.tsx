@@ -23,9 +23,10 @@ const asset = (name: string) =>
   readFile(path.join(process.cwd(), "assets", name));
 
 const Image = async () => {
-  const [newsreader, geist, panel] = await Promise.all([
+  const [newsreader, geist, bloom, panel] = await Promise.all([
     asset("newsreader-500.woff"),
     asset("geist-400.woff"),
+    readFile(path.join(process.cwd(), "assets/art/bloom.jpg"), "base64"),
     readFile(
       path.join(
         process.cwd(),
@@ -99,17 +100,23 @@ const Image = async () => {
 
       <div
         style={{
-          backgroundColor: "#5a2136",
-          backgroundImage:
-            "radial-gradient(circle at 18% 20%, #f0b4c6 0%, rgba(240,180,198,0) 46%), radial-gradient(circle at 86% 84%, #c85c7c 0%, rgba(200,92,124,0) 52%), radial-gradient(circle at 70% 22%, #7a2e4a 0%, rgba(122,46,74,0) 60%)",
+          backgroundColor: "#3d1522",
           display: "flex",
           flex: 1,
           justifyContent: "center",
           marginLeft: 48,
           overflow: "hidden",
           paddingTop: 56,
+          position: "relative",
         }}
       >
+        <img
+          alt=""
+          src={`data:image/jpeg;base64,${bloom}`}
+          width={552}
+          height={606}
+          style={{ left: 0, objectFit: "cover", position: "absolute", top: 0 }}
+        />
         <img
           alt=""
           src={`data:image/png;base64,${panel}`}

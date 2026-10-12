@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
+import { Art } from "@/components/art";
 import { BrewCommand } from "@/components/brew-command";
 import { DownloadButton, GitHubButton } from "@/components/buttons";
 import { Demo } from "@/components/demo";
@@ -10,6 +11,7 @@ import { Heading, Label, Section } from "@/components/section";
 import { clients, netbird, site, vpns } from "@/lib/site";
 import { SitePage } from "@/components/site-page";
 import { States } from "@/components/states";
+import { Steps } from "@/components/steps";
 import { VpnLogo } from "@/components/vpn-logo";
 
 const riseDelay = (index: number): CSSProperties => ({
@@ -32,21 +34,6 @@ const helper = [
   {
     body: "Generated configs go to a root-only directory. FortiGate’s is deleted as soon as openfortivpn has read it.",
     title: "Configs don’t linger",
-  },
-];
-
-const steps = [
-  {
-    body: "Click the flower in the menu bar, then Add VPN.",
-    title: "Open the panel.",
-  },
-  {
-    body: "Pick the kind, fill in what your admin gave you, and list a few hosts to check.",
-    title: "Describe the route.",
-  },
-  {
-    body: "Click it, or press ⌘1 to ⌘9. The first connection asks for an admin password once, to install the helper.",
-    title: "Connect.",
   },
 ];
 
@@ -96,7 +83,8 @@ const Page = () => (
         </div>
       </div>
 
-      <div className="petals grain border-gray-400 flex min-h-[600px] min-w-0 flex-col max-lg:border-t">
+      <div className="border-gray-400 relative isolate flex min-h-[600px] min-w-0 flex-col overflow-hidden max-lg:border-t">
+        <Art name="bloom" eager sizes="(min-width: 1024px) 640px, 100vw" />
         <Demo />
       </div>
     </section>
@@ -175,19 +163,7 @@ const Page = () => (
         Peony drives the open-source clients, so install the ones your VPNs
         need. Settings shows which are missing.
       </Heading>
-      <ol className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
-        {steps.map((step, index) => (
-          <li key={step.title}>
-            <Label className="tabular-nums">0{index + 1}</Label>
-            <h3 className="mt-4 text-[18px] leading-[1.5] font-medium tracking-[-0.02em]">
-              {step.title}
-            </h3>
-            <p className="text-gray-900 max-w-[20rem] text-[18px] leading-[1.5] tracking-[-0.02em]">
-              {step.body}
-            </p>
-          </li>
-        ))}
-      </ol>
+      <Steps />
 
       <table className="border-gray-400 mt-14 w-full border-t text-left text-[14px]">
         <caption className="sr-only">Clients for each kind of VPN</caption>
@@ -241,6 +217,12 @@ const Page = () => (
         <BrewCommand />
       </div>
     </section>
+    <div
+      aria-hidden="true"
+      className="border-gray-400 relative isolate h-[220px] overflow-hidden border-b sm:h-[340px]"
+    >
+      <Art name="field" sizes="(min-width: 1280px) 1230px, 100vw" />
+    </div>
   </SitePage>
 );
 
