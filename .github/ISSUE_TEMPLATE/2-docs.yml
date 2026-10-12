@@ -1,0 +1,28 @@
+name: Documentation update or improvement
+description: A request to update or improve the README or the website
+title: "📚 Docs: "
+labels: ["documentation"]
+
+body:
+  - type: markdown
+    attributes:
+      value: Before opening this issue, is this something you can help with? Pull requests to the README and `apps/web` are welcome.
+
+  - type: textarea
+    attributes:
+      label: What is the improvement or update you wish to see?
+      description: "Example: the install section doesn't say which client GlobalProtect needs."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Is there any context that might help us understand?
+      description: A clear description of any added context that might help.
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Does the docs page already exist? Please link to it.
+      description: "Example: https://github.com/PunGrumpy/peony#install"

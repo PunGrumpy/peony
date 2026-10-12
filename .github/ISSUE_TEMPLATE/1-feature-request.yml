@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an improvement, or ask for another kind of VPN
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping shape Peony. Please [search](https://github.com/PunGrumpy/peony/issues) first in case someone already asked.
+
+  - type: textarea
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation, not the solution. When does Peony get in your way, or leave you guessing?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: What would you like to happen?
+      description: If you have a proposal, describe it. Mockups and examples from other apps are welcome.
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: VPN and client
+      description: If this is about supporting another kind of VPN, name it and the open-source command-line client that connects to it.
+      placeholder: "Tailscale, the tailscale CLI"
