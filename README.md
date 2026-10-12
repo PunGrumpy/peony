@@ -54,9 +54,9 @@ Everything builds with the Command Line Tools; no Xcode needed. [Turborepo](http
 
 ```sh
 bun install
-bun run dev           # debug build, run from the terminal
+bun run dev           # debug build of the app, plus the site on localhost:3000
 bun run test          # core tests: validation, parsers, helper safety
-bun run build         # universal release build of Peony.app
+bun run build         # universal release build of Peony.app, and the site
 bun run install-app   # build, copy to /Applications, relaunch
 bun run package       # .dmg, .zip, SHA256SUMS and the Homebrew cask in apps/macos/dist/
 bun run snapshots     # render every panel state, light and dark, into Design/snapshots
@@ -70,8 +70,11 @@ bun run icon          # regenerate the app icon from the PeonyMark shape
 | `apps/macos/Sources/Peony` | The app: profile store, Keychain, the connection, settings. |
 | `apps/macos/Sources/peony-helper` | The root helper. |
 | `apps/macos/Sources/peony-snapshots` | Renders panels and the icon for design review. |
+| `apps/web` | The site (Next.js). It shows the panel snapshots straight from `apps/macos/Design`. |
 
-The version lives in `apps/macos/package.json`. To release, bump it, add the version's notes to `apps/macos/CHANGELOG.md` (the GitHub release reads them), then push a `v<version>` tag: a workflow builds the app and publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks the new version up within the hour.
+Add `--filter=@peony/macos` or `--filter=web` to run a task for one of them, e.g. `bun run dev --filter=web`.
+
+The version lives in `apps/macos/package.json`. To release, bump it, add the version's notes to `apps/macos/CHANGELOG.md` (the site's changelog and the GitHub release both read them), then push a `v<version>` tag: a workflow builds the app and publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks the new version up within the hour.
 
 The look follows [Orchid](https://orchid.ai/brand): a serif for headlines (New York), the system sans for reading, mono for labels and numbers, ink on paper with a single rose accent.
 
