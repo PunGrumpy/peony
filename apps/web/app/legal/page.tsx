@@ -20,6 +20,14 @@ const Page = () => (
       </p>
     </LegalSection>
 
+    <LegalSection title="Artwork">
+      <p>
+        The peony images on this site are original. A script in the repository
+        draws them, and they are released under the MIT License with the rest of
+        the site.
+      </p>
+    </LegalSection>
+
     <LegalSection title="VPN logos">
       <p>
         The Fortinet, Cisco, Palo Alto Networks, F5, and WireGuard logos come
