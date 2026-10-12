@@ -1,0 +1,19 @@
+# Used to auto generate release notes
+
+changelog:
+  exclude:
+    labels:
+      - "release-notes-ignore"
+  categories:
+    - title: Features
+      labels:
+        - "enhancement"
+    - title: Fixes
+      labels:
+        - "bug"
+    - title: Docs
+      labels:
+        - "documentation"
+    - title: Other changes
+      labels:
+        - "*"

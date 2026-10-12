@@ -1,0 +1,83 @@
+name: Bug report
+description: Something in Peony doesn't work the way the README says it should
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a new issue, please [search](https://github.com/PunGrumpy/peony/issues) existing ones and :+1: upvote instead of filing a duplicate. That gets it fixed sooner.
+
+        If the bug lets the root helper do something it shouldn't, don't file it here. [Report it privately](https://github.com/PunGrumpy/peony/security/advisories/new) instead.
+
+  - type: checkboxes
+    attributes:
+      label: Verify latest release
+      description: Please try the [latest release](https://github.com/PunGrumpy/peony/releases/latest) first. The bug may already be fixed.
+      options:
+        - label: I verified that the issue exists in the latest Peony release.
+          required: true
+
+  - type: input
+    attributes:
+      label: Peony version
+      description: Shown on the release you installed, or `git rev-parse --short HEAD` if you built it yourself.
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: macOS version and Mac
+      placeholder: "macOS 26.1, MacBook Pro 14-inch M4"
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Kind of VPN
+      multiple: true
+      options:
+        - FortiGate SSL-VPN (openfortivpn)
+        - AnyConnect (openconnect)
+        - GlobalProtect (openconnect)
+        - Pulse (openconnect)
+        - F5 (openconnect)
+        - Array (openconnect)
+        - WireGuard (wireguard-tools)
+        - NetBird
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Client version
+      description: The output of `openfortivpn --version`, `openconnect --version`, `wg --version`, or `netbird version`.
+      placeholder: "openconnect v9.12"
+
+  - type: textarea
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Actual behavior
+      description: A clear and concise description of the bug. Include the sentence Peony showed, if it showed one.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: To Reproduce
+      description: Steps that reproduce the problem. Screenshots of the panel or Settings help.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Log
+      render: shell
+      description: |
+        Open the panel and click **Log**, then paste what it shows. Remove hostnames, usernames, and addresses you don't want to share. Peony never logs your password, but the VPN client may print your username or your server's name.

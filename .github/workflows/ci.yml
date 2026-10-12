@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      macos: ${{ steps.affected.outputs.macos }}
+      web: ${{ steps.affected.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Find affected apps
+        id: affected
+        shell: bash
+        env:
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$TURBO_SCM_BASE" || "$TURBO_SCM_BASE" =~ ^0+$ ]] || ! git cat-file -e "$TURBO_SCM_BASE" 2>/dev/null; then
+            # No usable base (new branch, force push): build everything rather than nothing.
+            echo "macos=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          names="$(bunx turbo ls --affected --output=json | jq -r '.packages.items[].name')"
+          # The core package has no app of its own; a change to it marks the macOS app as affected.
+          if grep -qx "@peony/macos" <<<"$names"; then echo "macos=true"; else echo "macos=false"; fi >> "$GITHUB_OUTPUT"
+          if grep -qx "web" <<<"$names"; then echo "web=true"; else echo "web=false"; fi >> "$GITHUB_OUTPUT"
+
+  web:
+    needs: check
+    if: needs.check.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bunx turbo run build --filter=web
+
+  macos:
+    needs: check
+    if: needs.check.outputs.macos == 'true'
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bunx turbo run test build --filter=@peony/core --filter=@peony/macos

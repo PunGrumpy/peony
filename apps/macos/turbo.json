@@ -1,0 +1,20 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!Design/**",
+        "!Casks/**",
+        "$TURBO_ROOT$/packages/core/Package.swift",
+        "$TURBO_ROOT$/packages/core/Sources/**"
+      ],
+      "outputs": ["build/Peony.app/**"],
+      "env": ["ARCHS", "SDKROOT", "CODESIGN_IDENTITY"]
+    },
+    "package": {
+      "inputs": ["package.json", "scripts/package-app.sh", "Casks/**"],
+      "outputs": ["dist/**"]
+    }
+  }
+}
