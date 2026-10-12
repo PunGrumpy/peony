@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { site } from "@/components/site";
@@ -73,18 +73,22 @@ const parseRelease = (block: string): Release => {
   endParagraph();
 
   const titles = new Set(sections.map((section) => section.title));
+  const tag = `@peony/macos@${version}`;
   return {
     sections,
     slug: version.replaceAll(".", "-"),
     summary,
     tag: tagOrder.find((title) => titles.has(title)) ?? "Release",
-    url: `${site.repo}/releases/tag/v${version}`,
+    url: `${site.repo}/releases/tag/${encodeURIComponent(tag)}`,
     version,
   };
 };
 
-const readChangelog = () =>
-  readFileSync(path.join(process.cwd(), "../macos/CHANGELOG.md"), "utf-8");
+// Changesets writes the file with the first version, so it can be missing before then.
+const readChangelog = () => {
+  const file = path.join(process.cwd(), "../macos/CHANGELOG.md");
+  return existsSync(file) ? readFileSync(file, "utf-8") : "";
+};
 
 // The changelog has no dates, so they come from the GitHub releases. Without them the pages still build.
 const releaseDates = async () => {
@@ -103,7 +107,7 @@ const releaseDates = async () => {
     const releases: GitHubRelease[] = await response.json();
     for (const { tag_name: tagName, published_at: publishedAt } of releases) {
       if (tagName && publishedAt) {
-        dates.set(tagName.replace(/^v/u, ""), publishedAt);
+        dates.set(tagName.slice(tagName.lastIndexOf("@") + 1), publishedAt);
       }
     }
   } catch {
