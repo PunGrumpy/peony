@@ -2,7 +2,7 @@ cask "peony" do
   version "@VERSION@"
   sha256 "@SHA256@"
 
-  url "https://github.com/PunGrumpy/peony/releases/download/v#{version}/Peony-#{version}.dmg"
+  url "https://github.com/PunGrumpy/peony/releases/download/%40peony/macos%40#{version}/Peony-#{version}.dmg"
   name "Peony"
   desc "Menu bar switcher that keeps one VPN on at a time"
   homepage "https://github.com/PunGrumpy/peony"

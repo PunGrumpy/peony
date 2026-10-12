@@ -26,7 +26,7 @@ The [README](../README.md#develop) lists every task and what lives where.
 - Keep a pull request to one change. Small ones are reviewed sooner.
 - Anything the root helper accepts is validated in `packages/core`. If you change what it accepts, add a test that shows what it now refuses.
 - If you change a panel, run `bun run snapshots` and commit the new images. The site shows them.
-- If people will notice the change, add a line to `apps/macos/CHANGELOG.md` under the next version.
+- If people will notice the change in the app, run `bun changeset` and commit the file it writes. That text becomes the changelog entry.
 
 ## Pull requests
 

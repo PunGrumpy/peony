@@ -2,6 +2,7 @@ import app from "../../macos/package.json";
 
 const repo = "https://github.com/PunGrumpy/peony";
 const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+const tag = encodeURIComponent(`@peony/macos@${app.version}`);
 
 export const site = {
   author: {
@@ -9,7 +10,7 @@ export const site = {
     url: "https://www.pungrumpy.com",
   },
   brew: "brew install --cask pungrumpy/tap/peony",
-  download: `${repo}/releases/download/v${app.version}/Peony-${app.version}.dmg`,
+  download: `${repo}/releases/download/${tag}/Peony-${app.version}.dmg`,
   license: `${repo}/blob/main/LICENSE`,
   releases: `${repo}/releases`,
   repo,

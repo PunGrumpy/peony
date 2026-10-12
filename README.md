@@ -69,7 +69,7 @@ Add `--filter=@peony/macos` or `--filter=web` to run a task for one of them.
 | `apps/macos` | The app, its panel views, the root helper, and the snapshot renderer. |
 | `apps/web` | The site. It shows the panel snapshots from `apps/macos/Design`. |
 
-To release, bump the version in `apps/macos/package.json`, add its notes to `apps/macos/CHANGELOG.md`, and push a `v<version>` tag. A workflow publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks it up within the hour.
+Describe a change to the app with `bun changeset`. When changesets reach `main`, a workflow opens a "Version Packages" pull request; merging it bumps the version, tags it and publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks it up within the hour.
 
 See [CONTRIBUTING](.github/CONTRIBUTING.md) and the [security policy](.github/SECURITY.md).
 
