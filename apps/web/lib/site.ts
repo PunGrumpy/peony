@@ -1,20 +1,23 @@
 import app from "../../macos/package.json";
 
 const repo = "https://github.com/PunGrumpy/peony";
-const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 const tag = encodeURIComponent(`@peony/macos@${app.version}`);
 
 export const site = {
   author: {
+    handle: "@pungrumpy",
     name: "Noppakorn Kaewsalabnil",
     url: "https://www.pungrumpy.com",
   },
   brew: "brew install --cask pungrumpy/tap/peony",
+  description:
+    "A menu bar app that switches between your VPNs and keeps only one on, so their routes and DNS never fight. Then it checks the hosts you care about.",
   download: `${repo}/releases/download/${tag}/Peony-${app.version}.dmg`,
   license: `${repo}/blob/main/LICENSE`,
+  name: "Peony",
   releases: `${repo}/releases`,
   repo,
-  url: production ? `https://${production}` : "http://localhost:3000",
+  tagline: "One VPN at a time, from the menu bar",
   version: app.version,
 };
 

@@ -24,7 +24,6 @@ export const generateMetadata = async ({
   const release = releases.find((item) => item.slug === version);
   return release
     ? {
-        alternates: { canonical: `/changelog/${release.slug}` },
         description: oneLine(release),
         title: { absolute: `Peony ${release.version}` },
       }

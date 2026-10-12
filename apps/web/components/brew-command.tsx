@@ -4,7 +4,7 @@ import { cn } from "cn";
 import { useEffect, useRef, useState } from "react";
 
 import { CheckIcon, CopyIcon } from "./icons";
-import { site } from "./site";
+import { site } from "@/lib/site";
 
 export const BrewCommand = ({ className }: { className?: string }) => {
   const [copied, setCopied] = useState(false);

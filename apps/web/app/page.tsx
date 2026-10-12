@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
@@ -8,14 +7,10 @@ import { Demo } from "@/components/demo";
 import { Mark } from "@/components/logo";
 import { Panel } from "@/components/panel";
 import { Heading, Label, Section } from "@/components/section";
-import { clients, netbird, site, vpns } from "@/components/site";
+import { clients, netbird, site, vpns } from "@/lib/site";
 import { SitePage } from "@/components/site-page";
 import { States } from "@/components/states";
 import { VpnLogo } from "@/components/vpn-logo";
-
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
 
 const riseDelay = (index: number): CSSProperties => ({
   animationDelay: `${index * 60}ms`,

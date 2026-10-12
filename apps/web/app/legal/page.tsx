@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 
 import { LegalPage, LegalSection } from "@/components/legal";
-import { site } from "@/components/site";
+import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/legal" },
   description:
     "Licenses for Peony and the fonts and logos it uses, and the trademarks it names.",
   title: "Licenses and Trademarks",

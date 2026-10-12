@@ -1,47 +1,83 @@
-import { cn } from "cn";
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
-
-import { site } from "@/components/site";
-
 import "./globals.css";
+import type { Metadata, Viewport } from "next";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-});
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-newsreader",
-});
-
-export const metadata: Metadata = {
-  applicationName: "Peony",
-  description:
-    "A menu bar app that switches between your VPNs and keeps only one on, so their routes and DNS never fight. Then it checks the hosts you care about.",
-  metadataBase: new URL(site.url),
-  title: {
-    default: "Peony — One VPN at a time, from the menu bar",
-    template: "%s · Peony",
-  },
-};
+import { fonts } from "@/lib/fonts";
+import { site } from "@/lib/site";
+import { url } from "@/lib/url";
 
 export const viewport: Viewport = {
+  colorScheme: "light dark",
+  initialScale: 1,
   themeColor: [
     { color: "#fcfbfb", media: "(prefers-color-scheme: light)" },
     { color: "#171415", media: "(prefers-color-scheme: dark)" },
   ],
+  viewportFit: "cover",
+  width: "device-width",
 };
 
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "./",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: site.name,
+  },
+  applicationName: site.name,
+  authors: [site.author],
+  category: "technology",
+  creator: site.author.name,
+  description: site.description,
+  formatDetection: { telephone: false },
+  generator: "Next.js",
+  keywords: [
+    "Peony",
+    "VPN switcher",
+    "macOS menu bar app",
+    "FortiGate",
+    "openfortivpn",
+    "AnyConnect",
+    "GlobalProtect",
+    "openconnect",
+    "WireGuard",
+    "NetBird",
+  ],
+  metadataBase: new URL(url),
+  openGraph: {
+    locale: "en_US",
+    siteName: site.name,
+    type: "website",
+    url: "./",
+  },
+  publisher: site.author.name,
+  robots: {
+    follow: true,
+    googleBot: {
+      follow: true,
+      index: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+    index: true,
+  },
+  title: {
+    default: `${site.name} — ${site.tagline}`,
+    template: `%s · ${site.name}`,
+  },
+  twitter: {
+    card: "summary_large_image",
+    creator: site.author.handle,
+    site: site.author.handle,
+  },
+};
+
+
 const RootLayout = ({ children }: LayoutProps<"/">) => (
-  <html
-    lang="en"
-    className={cn(geist.variable, geistMono.variable, newsreader.variable)}
-  >
-    <body className="min-h-dvh p-[5px] font-sans">{children}</body>
+  <html lang="en" className={fonts}>
+    <body className="min-h-dvh p-[5px]">{children}</body>
   </html>
 );
 

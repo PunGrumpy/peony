@@ -125,7 +125,6 @@ html {
   color-scheme: light dark;
   background-color: var(--color-background-200);
   color: var(--color-gray-1000);
-  -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-reduced-motion: no-preference) {
