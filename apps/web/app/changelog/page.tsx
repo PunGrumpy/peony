@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Label } from "@/components/section";
 import { Article, SitePage, Title } from "@/components/site-page";
+import { site } from "@/lib/site";
 import { getReleases, oneLine } from "@/lib/changelog";
 import type { Release } from "@/lib/changelog";
 
@@ -47,6 +48,18 @@ const Page = async () => {
           release.
         </p>
         <div className="border-gray-400 mt-12 border-t">
+          {releases.length === 0 && (
+            <p className="border-gray-400 text-gray-900 border-b py-4 text-[14px]">
+              No releases yet. The first one will be listed here, and on{" "}
+              <a
+                href={site.releases}
+                className="text-gray-1000 underline decoration-gray-500 underline-offset-2 hover:decoration-gray-1000"
+              >
+                GitHub
+              </a>
+              .
+            </p>
+          )}
           {byYear(releases).map((group) => (
             <section
               key={group.year || "undated"}

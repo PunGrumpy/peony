@@ -4,21 +4,22 @@ import { SiteFooter } from "./site-footer";
 import { SiteHeader } from "./site-header";
 
 // The header, the two rails every page runs between, and the footer.
+// The rails run to the bottom of the window, so a short page keeps its frame and its footer stays down.
 export const SitePage = ({ children }: { children: ReactNode }) => (
   <>
     <SiteHeader />
-    <div className="mx-auto max-w-[1280px] sm:px-6">
-      <div className="border-gray-400 sm:border-x">
-        <main>{children}</main>
+    <div className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col sm:px-6">
+      <div className="border-gray-400 flex flex-1 flex-col sm:border-x">
+        <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter />
       </div>
     </div>
   </>
 );
 
-// A narrow column for pages that are mostly reading.
+// A narrow column for pages that are mostly reading. It takes the height a short page leaves over.
 export const Article = ({ children }: { children: ReactNode }) => (
-  <article className="border-gray-400 border-b px-6 py-16 sm:px-10 sm:py-24">
+  <article className="border-gray-400 flex-1 border-b px-6 py-16 sm:px-10 sm:py-24">
     <div className="max-w-[680px]">{children}</div>
   </article>
 );
