@@ -7,7 +7,6 @@ import { getReleases, oneLine } from "@/lib/changelog";
 import type { Release } from "@/lib/changelog";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/changelog" },
   description:
     "Every Peony release, newest first, with what changed in each one.",
   title: "Changelog",

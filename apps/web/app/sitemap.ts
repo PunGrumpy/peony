@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
-import { url } from "@/lib/url";
 import { getReleases } from "@/lib/changelog";
+import { url } from "@/lib/url";
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
   const releases = await getReleases();

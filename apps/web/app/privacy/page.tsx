@@ -4,7 +4,6 @@ import { LegalPage, LegalSection } from "@/components/legal";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/privacy" },
   description:
     "What Peony keeps on your Mac, the only connections it makes, and what this website collects.",
   title: "Privacy Policy",

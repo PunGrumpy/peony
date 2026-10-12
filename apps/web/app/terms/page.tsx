@@ -4,7 +4,6 @@ import { LegalPage, LegalSection } from "@/components/legal";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/terms" },
   description:
     "The terms for using the Peony app and this website, alongside the MIT License that covers the code.",
   title: "Terms of Service",
