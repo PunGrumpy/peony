@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+/*
+ * Colour follows Geist's layout: two backgrounds, then scales numbered by job.
+ *   100-300  component backgrounds (rest, hover, active)
+ *   400-600  borders (rest, hover, active)
+ *   700-800  high contrast backgrounds (rest, hover)
+ *   900-1000 secondary and primary text
+ * The values are Peony's: a plum-warmed gray and one rose, as in PeonyUI/Theme.swift.
+ */
+@custom-variant transparency-reduce (@media (prefers-reduced-transparency: reduce));
+
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-background-100: #ffffff;
+  --color-background-200: #fcfbfb;
+
+  --color-gray-100: #f5f2f3;
+  --color-gray-200: #f0edee;
+  --color-gray-300: #eae6e8;
+  --color-gray-400: #e7e2e4;
+  --color-gray-500: #cdc6c9;
+  --color-gray-600: #aea6a9;
+  --color-gray-700: #8e8689;
+  --color-gray-800: #7c7477;
+  --color-gray-900: #5c5357;
+  --color-gray-1000: #1c0d12;
+
+  --color-gray-alpha-100: rgb(28 13 18 / 0.04);
+  --color-gray-alpha-200: rgb(28 13 18 / 0.06);
+  --color-gray-alpha-300: rgb(28 13 18 / 0.08);
+  --color-gray-alpha-400: rgb(28 13 18 / 0.1);
+  --color-gray-alpha-500: rgb(28 13 18 / 0.2);
+  --color-gray-alpha-600: rgb(28 13 18 / 0.34);
+  --color-gray-alpha-700: rgb(28 13 18 / 0.46);
+  --color-gray-alpha-800: rgb(28 13 18 / 0.54);
+  --color-gray-alpha-900: rgb(28 13 18 / 0.7);
+  --color-gray-alpha-1000: rgb(28 13 18 / 0.92);
+
+  --color-rose-100: #fdf1f4;
+  --color-rose-200: #fbe9ee;
+  --color-rose-300: #f8dfe6;
+  --color-rose-400: #f3cfd9;
+  --color-rose-500: #e9b1c1;
+  --color-rose-600: #db87a0;
+  --color-rose-700: #c85c7c;
+  --color-rose-800: #b84d6d;
+  --color-rose-900: #a03d5c;
+  --color-rose-1000: #3d1522;
+
+  --color-amber-100: #fdf3ec;
+  --color-amber-200: #fbeadf;
+  --color-amber-300: #f8dfd0;
+  --color-amber-400: #f2cdb8;
+  --color-amber-500: #e8ae8f;
+  --color-amber-600: #d98a61;
+  --color-amber-700: #c96a3c;
+  --color-amber-800: #bf5e31;
+  --color-amber-900: #b4532a;
+  --color-amber-1000: #3f1c0d;
+
+  --font-sans: var(--font-geist), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-100: #221e20;
+    --color-background-200: #171415;
+
+    --color-gray-100: #1f1b1d;
+    --color-gray-200: #262123;
+    --color-gray-300: #2d282a;
+    --color-gray-400: #332d30;
+    --color-gray-500: #4a4346;
+    --color-gray-600: #6b6367;
+    --color-gray-700: #8a8285;
+    --color-gray-800: #9b9396;
+    --color-gray-900: #b0a8ab;
+    --color-gray-1000: #f2eff0;
+
+    --color-gray-alpha-100: rgb(255 255 255 / 0.05);
+    --color-gray-alpha-200: rgb(255 255 255 / 0.08);
+    --color-gray-alpha-300: rgb(255 255 255 / 0.1);
+    --color-gray-alpha-400: rgb(255 255 255 / 0.12);
+    --color-gray-alpha-500: rgb(255 255 255 / 0.22);
+    --color-gray-alpha-600: rgb(255 255 255 / 0.36);
+    --color-gray-alpha-700: rgb(255 255 255 / 0.5);
+    --color-gray-alpha-800: rgb(255 255 255 / 0.58);
+    --color-gray-alpha-900: rgb(255 255 255 / 0.7);
+    --color-gray-alpha-1000: rgb(255 255 255 / 0.93);
+
+    --color-rose-100: #2a161c;
+    --color-rose-200: #331a22;
+    --color-rose-300: #3d1f29;
+    --color-rose-400: #4d2634;
+    --color-rose-500: #6a3246;
+    --color-rose-600: #944a63;
+    --color-rose-700: #e07c98;
+    --color-rose-800: #e68ea6;
+    --color-rose-900: #eda3b7;
+    --color-rose-1000: #fbe6ec;
+
+    --color-amber-100: #2a1a13;
+    --color-amber-200: #331f16;
+    --color-amber-300: #3d251a;
+    --color-amber-400: #4f2f20;
+    --color-amber-500: #6e412b;
+    --color-amber-600: #9a5a3a;
+    --color-amber-700: #d9774a;
+    --color-amber-800: #e08154;
+    --color-amber-900: #e88b5e;
+    --color-amber-1000: #fbe9df;
+  }
+}
+
+html {
+  color-scheme: light dark;
+  background-color: var(--color-background-200);
+  color: var(--color-gray-1000);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+::selection {
+  background: var(--color-rose-400);
+}
+
+/* The frame around the viewport. Fixed, so it stays put while the page scrolls under it. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  border: 5px solid var(--color-rose-700);
+}
+
+@utility press {
+  transition: transform 140ms var(--ease-out);
+  &:active {
+    transform: scale(0.97);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:active {
+      transform: none;
+      opacity: 0.8;
+    }
+  }
+}
+
+/* Tiled, not a live filter: the hero art is large and scrolls. */
+@utility grain {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    opacity: 0.22;
+    mix-blend-mode: overlay;
+  }
+}
+
+/* A peony out of focus: the same plum and rose in both themes. */
+@utility petals {
+  background:
+    radial-gradient(48% 42% at 18% 20%, #f0b4c6 0%, transparent 72%),
+    radial-gradient(52% 56% at 86% 84%, #c85c7c 0%, transparent 70%),
+    radial-gradient(60% 60% at 70% 22%, #7a2e4a 0%, transparent 74%),
+    radial-gradient(70% 60% at 12% 92%, #3d1522 0%, transparent 70%), #5a2136;
+}
+
+@keyframes blur-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+@utility blur-in {
+  animation: blur-in 200ms var(--ease-out);
+}
+
+/* The outer ring comes and goes while a tunnel is coming up. */
+@keyframes bloom {
+  50% {
+    opacity: 1;
+  }
+}
+
+.bloom path:last-child {
+  animation: bloom 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom path:last-child {
+    animation: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.rise {
+  animation: rise 500ms var(--ease-out) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rise {
+    from {
+      opacity: 0;
+    }
+  }
+}
