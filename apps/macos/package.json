@@ -1,0 +1,16 @@
+{
+  "name": "@peony/macos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "./scripts/build-app.sh",
+    "dev": "./scripts/run.sh",
+    "package": "./scripts/package-app.sh",
+    "install-app": "./scripts/install-app.sh",
+    "snapshots": "./scripts/snapshots.sh",
+    "icon": "./scripts/icon.sh"
+  },
+  "devDependencies": {
+    "@peony/core": "workspace:*"
+  }
+}
