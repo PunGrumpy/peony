@@ -1,0 +1,15 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/macos/package.json",
+        "$TURBO_ROOT$/apps/macos/CHANGELOG.md",
+        "$TURBO_ROOT$/apps/macos/Design/snapshots/**"
+      ],
+      "env": ["VERCEL_PROJECT_PRODUCTION_URL"]
+    }
+  }
+}
