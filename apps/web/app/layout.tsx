@@ -74,10 +74,9 @@ export const metadata: Metadata = {
   },
 };
 
-
 const RootLayout = ({ children }: LayoutProps<"/">) => (
   <html lang="en" className={fonts}>
-    <body className="min-h-dvh p-[5px]">{children}</body>
+    <body className="flex min-h-dvh flex-col p-[5px]">{children}</body>
   </html>
 );
 
