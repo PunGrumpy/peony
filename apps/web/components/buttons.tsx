@@ -3,7 +3,7 @@ import { cn } from "cn";
 
 import { button } from "./button";
 import { AppleIcon, GitHubIcon } from "./icons";
-import { site } from "./site";
+import { site } from "@/lib/site";
 
 type Size = Pick<VariantProps<typeof button>, "size">;
 

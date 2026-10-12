@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { site } from "@/components/site";
+import { site } from "@/lib/site";
 
 export interface ChangelogSection {
   title: string;

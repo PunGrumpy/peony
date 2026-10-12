@@ -1,7 +1,6 @@
 import app from "../../macos/package.json";
 
 const repo = "https://github.com/PunGrumpy/peony";
-const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 const tag = encodeURIComponent(`@peony/macos@${app.version}`);
 
 export const site = {
@@ -14,7 +13,6 @@ export const site = {
   license: `${repo}/blob/main/LICENSE`,
   releases: `${repo}/releases`,
   repo,
-  url: production ? `https://${production}` : "http://localhost:3000",
   version: app.version,
 };
 

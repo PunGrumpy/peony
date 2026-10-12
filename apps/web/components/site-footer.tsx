@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Logo } from "./logo";
-import { site } from "./site";
+import { site } from "@/lib/site";
 
 const FooterLink = ({
   href,

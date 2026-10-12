@@ -2,7 +2,7 @@ import { cn } from "cn";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 
-import { site } from "@/components/site";
+import { url } from "@/lib/url";
 
 import "./globals.css";
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   applicationName: "Peony",
   description:
     "A menu bar app that switches between your VPNs and keeps only one on, so their routes and DNS never fight. Then it checks the hosts you care about.",
-  metadataBase: new URL(site.url),
+  metadataBase: new URL(url),
   title: {
     default: "Peony — One VPN at a time, from the menu bar",
     template: "%s · Peony",

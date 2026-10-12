@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { site } from "@/components/site";
+import { url } from "@/lib/url";
 import { getReleases } from "@/lib/changelog";
 
 const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
@@ -9,12 +9,12 @@ const sitemap = async (): Promise<MetadataRoute.Sitemap> => {
   const pages = ["", "/changelog", "/privacy", "/terms", "/legal"].map(
     (path) => ({
       lastModified: path === "" || path === "/changelog" ? latest : undefined,
-      url: `${site.url}${path}`,
+      url: `${url}${path}`,
     })
   );
   const versions = releases.map((release) => ({
     lastModified: release.date,
-    url: `${site.url}/changelog/${release.slug}`,
+    url: `${url}/changelog/${release.slug}`,
   }));
   return [...pages, ...versions];
 };

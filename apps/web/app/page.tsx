@@ -8,7 +8,7 @@ import { Demo } from "@/components/demo";
 import { Mark } from "@/components/logo";
 import { Panel } from "@/components/panel";
 import { Heading, Label, Section } from "@/components/section";
-import { clients, netbird, site, vpns } from "@/components/site";
+import { clients, netbird, site, vpns } from "@/lib/site";
 import { SitePage } from "@/components/site-page";
 import { States } from "@/components/states";
 import { VpnLogo } from "@/components/vpn-logo";
