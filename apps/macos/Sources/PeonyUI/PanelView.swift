@@ -59,7 +59,7 @@ public struct PanelView: View {
 
 // MARK: - Wordmark
 
-/// Symbol plus serif name, like Orchid's wordmark.
+/// Symbol plus serif name.
 private struct Wordmark: View {
   let live: Bool
 
