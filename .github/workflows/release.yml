@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch:
 
 permissions: {}
 
@@ -10,36 +11,104 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  select-mode:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - id: select-mode
+        uses: changesets/action/select-mode@v2
+
+  # Changesets waiting on main: open or update the "Version Packages" pull request.
+  version:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'version'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - uses: changesets/action/version@v2
+
+  # That pull request merged: tag the new version.
+  publish:
+    needs: select-mode
+    if: needs.select-mode.outputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      published-packages: ${{ steps.publish.outputs.published-packages }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - id: publish
+        uses: changesets/action/publish@v2
+
   app:
+    needs: publish
+    # Run it by hand to rebuild the app for the current version's tag.
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' || contains(needs.publish.outputs.published-packages, '"@peony/macos"'))
     runs-on: macos-26
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - name: Check the tag against the app's version
-        run: |
-          version="$(jq -r .version apps/macos/package.json)"
-          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "::error::The tag is $GITHUB_REF_NAME but apps/macos/package.json says $version."
-            exit 1
-          fi
-          echo "VERSION=$version" >> "$GITHUB_ENV"
       - run: bunx turbo run test package --filter=@peony/core --filter=@peony/macos
       # pungrumpy/homebrew-tap reads SHA256SUMS from this release to update the cask.
-      - name: Publish the release
+      - name: Publish the app and release notes
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          # The same notes the site's changelog shows for this version.
-          awk -v heading="## $VERSION" '$0 == heading { found = 1; next } /^## / { found = 0 } found' \
+          version="$(jq -r .version apps/macos/package.json)"
+          tag="@peony/macos@$version"
+          awk -v heading="## $version" '$0 == heading { found = 1; next } /^## / { found = 0 } found' \
             apps/macos/CHANGELOG.md > notes.md
-          cd apps/macos/dist
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Peony $VERSION" --notes-file ../../../notes.md \
-            "Peony-$VERSION.dmg" "Peony-$VERSION.zip" SHA256SUMS
+          { echo; cat .github/release-install.md; } >> notes.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "Peony $version" --notes-file notes.md
+          else
+            # Changesets skips the release when the package has no CHANGELOG.md yet.
+            gh release create "$tag" --verify-tag --title "Peony $version" --notes-file notes.md
+          fi
+          gh release upload "$tag" "apps/macos/dist/Peony-$version.dmg" "apps/macos/dist/Peony-$version.zip" apps/macos/dist/SHA256SUMS --clobber
