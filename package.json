@@ -13,9 +13,13 @@
     "snapshots": "turbo run snapshots",
     "icon": "turbo run icon",
     "package": "turbo run package",
-    "install-app": "turbo run install-app"
+    "install-app": "turbo run install-app",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset tag"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "turbo": "^2.11.3"
   },
   "packageManager": "bun@1.4.3"
