@@ -1,0 +1,20 @@
+name: Deploy website
+
+# The site deploys with each app release. Run this by hand to publish a change
+# that only touches the site, such as a typo or a policy page.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy the website
+        run: curl --fail --silent --show-error --request POST "$DEPLOY_HOOK"
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
