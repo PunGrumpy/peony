@@ -112,3 +112,8 @@ jobs:
             gh release create "$tag" --verify-tag --title "Peony $version" --notes-file notes.md
           fi
           gh release upload "$tag" "apps/macos/dist/Peony-$version.dmg" "apps/macos/dist/Peony-$version.zip" apps/macos/dist/SHA256SUMS --clobber
+      # Vercel doesn't deploy main on its own, so the site never links to a download that isn't there yet.
+      - name: Deploy the website
+        run: curl --fail --silent --show-error --request POST "$DEPLOY_HOOK"
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
