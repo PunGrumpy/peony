@@ -43,6 +43,7 @@ body:
         - Pulse (openconnect)
         - F5 (openconnect)
         - Array (openconnect)
+        - OpenVPN (openvpn)
         - WireGuard (wireguard-tools)
         - NetBird
         - Tailscale
@@ -52,7 +53,7 @@ body:
   - type: input
     attributes:
       label: Client version
-      description: The output of `openfortivpn --version`, `openconnect --version`, `wg --version`, `netbird version`, or `tailscale version`.
+      description: The output of `openfortivpn --version`, `openconnect --version`, `openvpn --version`, `wg --version`, `netbird version`, or `tailscale version`.
       placeholder: "openconnect v9.12"
 
   - type: textarea

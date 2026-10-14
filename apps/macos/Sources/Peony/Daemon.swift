@@ -34,7 +34,7 @@ extension Profile.Kind {
     switch self {
     case .netBird: .netBird
     case .tailscale: .tailscale
-    case .forti, .openConnect, .wireGuard: nil
+    case .forti, .openConnect, .wireGuard, .openVPN: nil
     }
   }
 }

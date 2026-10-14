@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <LegalPage title="Privacy Policy" updated="October 12, 2026">
+  <LegalPage title="Privacy Policy" updated="October 14, 2026">
     <p>
       Peony is a menu bar app that runs on your Mac. It has no accounts and no
       servers, and it has no telemetry, analytics, crash reporting, or ads. This
@@ -25,8 +25,8 @@ const Page = () => (
           in <code>~/Library/Application Support/Peony/profiles.json</code>.
         </li>
         <li>
-          Passwords and WireGuard configs, in your Keychain under{" "}
-          <code>app.peony.Peony</code>.
+          Passwords and WireGuard and OpenVPN configs, in your Keychain
+          under <code>app.peony.Peony</code>.
         </li>
         <li>
           Your preferences, including the last VPN you used, in the{" "}
@@ -41,6 +41,8 @@ const Page = () => (
           While a tunnel is up, the config the helper generates for it, in the
           root-only directory <code>/var/run/peony</code>. FortiGate&apos;s holds
           your password, so it is deleted as soon as openfortivpn has read it.
+          OpenVPN&apos;s config is deleted the same way, and the file with your
+          OpenVPN password when the tunnel closes.
         </li>
       </ul>
       <p>
@@ -56,9 +58,9 @@ const Page = () => (
       <ul>
         <li>
           <strong>Your VPN.</strong> The client you installed (openfortivpn,
-          openconnect, WireGuard, NetBird, or Tailscale) connects to the server
-          in your settings and signs in with your credentials. Your VPN&apos;s operator
-          handles that traffic under its own policy.
+          openconnect, OpenVPN, WireGuard, NetBird, or Tailscale) connects to the
+          server in your settings and signs in with your credentials. Your
+          VPN&apos;s operator handles that traffic under its own policy.
         </li>
         <li>
           <strong>Reachability checks.</strong> While a tunnel is up, Peony

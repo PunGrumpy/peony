@@ -8,7 +8,7 @@ import Foundation
 /// for longer than the tunnel takes to read them.
 public enum Helper {
   /// Bump whenever the helper's behaviour changes; the app reinstalls on mismatch.
-  public static let version = "1"
+  public static let version = "2"
   public static let installedPath = "/Library/PrivilegedHelperTools/app.peony.helper"
   public static let sudoersPath = "/etc/sudoers.d/peony"
   /// Root-only scratch space for generated configs.
@@ -20,7 +20,8 @@ public enum HelperRequest: Codable, Equatable, Sendable {
   case openConnect(OpenConnectRequest)
   case wireGuardUp(WireGuardRequest)
   case wireGuardDown(interfaceName: String)
-  /// Interrupt any openfortivpn or openconnect Peony started.
+  case openVPN(OpenVPNRequest)
+  /// Interrupt any openfortivpn, openconnect or openvpn Peony started.
   case stop
 
   public struct FortiRequest: Codable, Equatable, Sendable {
@@ -99,12 +100,32 @@ public enum HelperRequest: Codable, Equatable, Sendable {
       self.config = config
     }
   }
+
+  public struct OpenVPNRequest: Codable, Equatable, Sendable {
+    public var config: String
+    /// Empty when the server only checks the certificate.
+    public var username: String
+    public var password: String
+
+    public init(config: String, username: String, password: String) {
+      self.config = config
+      self.username = username
+      self.password = password
+    }
+
+    /// The validated `--auth-user-pass` file: the username, then the password. Nil without a username.
+    public func authFile() throws(Validation.Failure) -> String? {
+      guard !username.isEmpty else { return nil }
+      return "\(try Validation.secretLine(username, field: "Username"))\n\(try Validation.secretLine(password, field: "Password"))\n"
+    }
+  }
 }
 
 /// Where Homebrew puts the tools Peony drives. Only these directories are
 /// searched, so a stray binary elsewhere on PATH can't be picked up as root.
+/// openvpn is a daemon, so Homebrew links it into `sbin` rather than `bin`.
 public enum Tools {
-  public static let searchDirectories = ["/opt/homebrew/bin", "/usr/local/bin"]
+  public static let searchDirectories = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/homebrew/sbin", "/usr/local/sbin"]
 
   public static func find(_ name: String) -> String? {
     searchDirectories

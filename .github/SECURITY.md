@@ -21,14 +21,14 @@ Anything that lets someone do more than Peony intends, especially:
 
 - getting the root helper to run a command, read a file, or write a file it shouldn't;
 - a value that passes validation and reaches a config file or a command line as an option or a second line;
-- a password, key, or WireGuard config left on disk, in a log, or in a process's arguments;
+- a password, key, or WireGuard or OpenVPN config left on disk, in a log, or in a process's arguments;
 - a way around the checks on which VPN clients the helper will execute.
 
 The helper's rules are described in the [README](https://github.com/PunGrumpy/peony#how-it-works-and-what-runs-as-root) and tested in `packages/core`.
 
 ## What doesn't
 
-- Bugs in openfortivpn, openconnect, wireguard-tools, NetBird, or Tailscale. Please report those to their projects.
+- Bugs in openfortivpn, openconnect, OpenVPN, wireguard-tools, NetBird, or Tailscale. Please report those to their projects.
 - Anything that needs root or your login password to begin with.
 - The app not being notarized yet. That's known, and the README says how to open it.
 

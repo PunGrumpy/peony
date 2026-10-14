@@ -28,6 +28,7 @@ export const vpns = [
   { id: "globalprotect", name: "GlobalProtect" },
   { id: "pulse", name: "Pulse", wide: true },
   { id: "f5", name: "F5" },
+  { id: "openvpn", name: "OpenVPN" },
   { id: "wireguard", name: "WireGuard" },
   { id: "netbird", name: "NetBird" },
   { id: "tailscale", name: "Tailscale" },
@@ -39,6 +40,7 @@ export const clients = [
     command: "brew install openconnect",
     vpn: "AnyConnect, GlobalProtect, Pulse, F5, Array",
   },
+  { command: "brew install openvpn", vpn: "OpenVPN" },
   { command: "brew install wireguard-tools", vpn: "WireGuard" },
   { command: "brew install --cask tailscale-app", vpn: "Tailscale" },
 ] as const;

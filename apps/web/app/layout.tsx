@@ -41,6 +41,7 @@ export const metadata: Metadata = {
     "AnyConnect",
     "GlobalProtect",
     "openconnect",
+    "OpenVPN",
     "WireGuard",
     "NetBird",
     "Tailscale",

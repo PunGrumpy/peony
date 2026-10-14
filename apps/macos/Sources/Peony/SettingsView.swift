@@ -48,6 +48,7 @@ struct SettingsView: View {
     switch kind {
     case .forti: "lock.shield.fill"
     case .openConnect: "network.badge.shield.half.filled"
+    case .openVPN: "key.horizontal.fill"
     case .wireGuard: "bolt.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
     case .tailscale: "circle.grid.3x3.fill"
@@ -85,6 +86,7 @@ private struct GeneralSettings: View {
       Section("Tools") {
         ToolRow(name: "openfortivpn", purpose: "FortiGate", install: "brew install openfortivpn")
         ToolRow(name: "openconnect", purpose: "AnyConnect, GlobalProtect, Pulse, F5", install: "brew install openconnect")
+        ToolRow(name: "openvpn", purpose: "OpenVPN", install: "brew install openvpn")
         ToolRow(name: "wg-quick", purpose: "WireGuard", install: "brew install wireguard-tools")
         ToolRow(name: "netbird", purpose: "NetBird", install: "brew install netbirdio/tap/netbird")
         ToolRow(name: "tailscale", purpose: "Tailscale", install: "brew install --cask tailscale-app")
@@ -153,13 +155,14 @@ private struct PageTitle: View {
 // MARK: - Profile editor
 
 private enum KindChoice: String, CaseIterable, Identifiable {
-  case forti, openConnect, wireGuard, netBird, tailscale
+  case forti, openConnect, openVPN, wireGuard, netBird, tailscale
   var id: Self { self }
 
   var title: String {
     switch self {
     case .forti: "FortiGate"
     case .openConnect: "AnyConnect & more"
+    case .openVPN: "OpenVPN"
     case .wireGuard: "WireGuard"
     case .netBird: "NetBird"
     case .tailscale: "Tailscale"
@@ -170,6 +173,7 @@ private enum KindChoice: String, CaseIterable, Identifiable {
     switch self {
     case .forti: "lock.shield.fill"
     case .openConnect: "network.badge.shield.half.filled"
+    case .openVPN: "key.horizontal.fill"
     case .wireGuard: "bolt.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
     case .tailscale: "circle.grid.3x3.fill"
@@ -180,6 +184,7 @@ private enum KindChoice: String, CaseIterable, Identifiable {
     switch kind {
     case .forti: self = .forti
     case .openConnect: self = .openConnect
+    case .openVPN: self = .openVPN
     case .wireGuard: self = .wireGuard
     case .netBird: self = .netBird
     case .tailscale: self = .tailscale
@@ -191,12 +196,15 @@ private struct ProfileEditor: View {
   let model: AppModel
   let original: Profile?
   let hasSavedSecret: Bool
+  let hasSavedOpenVPNPassword: Bool
 
   @State private var name: String
   @State private var choice: KindChoice
   @State private var forti: Profile.Forti
   @State private var openConnect: Profile.OpenConnect
   @State private var wireGuard: Profile.WireGuard
+  @State private var openVPN: Profile.OpenVPN
+  @State private var openVPNPassword: String
   @State private var netBird: Profile.NetBird
   @State private var secret: String
   @State private var destinations: String
@@ -212,11 +220,14 @@ private struct ProfileEditor: View {
     if case .forti(let settings) = kind { _forti = State(initialValue: settings) } else { _forti = State(initialValue: .init()) }
     if case .openConnect(let settings) = kind { _openConnect = State(initialValue: settings) } else { _openConnect = State(initialValue: .init()) }
     if case .wireGuard(let settings) = kind { _wireGuard = State(initialValue: settings) } else { _wireGuard = State(initialValue: .init()) }
+    if case .openVPN(let settings) = kind { _openVPN = State(initialValue: settings) } else { _openVPN = State(initialValue: .init()) }
     if case .netBird(let settings) = kind { _netBird = State(initialValue: settings) } else { _netBird = State(initialValue: .init()) }
     // The saved secret stays in the Keychain: reading it here would make macOS ask permission
     // just to show a form. An empty field means "keep what's saved".
     _secret = State(initialValue: "")
+    _openVPNPassword = State(initialValue: "")
     hasSavedSecret = profile.map { Keychain.hasSecret(for: $0.id) } ?? false
+    hasSavedOpenVPNPassword = profile.map { Keychain.hasSecret(for: $0.id, .openVPNPassword) } ?? false
     _destinations = State(initialValue: profile?.destinations.joined(separator: ", ") ?? "")
   }
 
@@ -301,28 +312,15 @@ private struct ProfileEditor: View {
         get: { openConnect.serverCert ?? "" }, set: { openConnect.serverCert = $0.isEmpty ? nil : $0 }),
         prompt: Text("Optional pin-sha256:…"))
 
+    case .openVPN:
+      configEditor(fileExtensions: ["ovpn", "conf"], footnote: "Stored in your Keychain. OpenVPN runs as root, so scripts, plugins and paths to other files aren't allowed. Keep certificates and keys inline.")
+      TextField("Username", text: $openVPN.username, prompt: Text("Leave empty if you only sign in with a certificate"))
+      SecureField("Password", text: $openVPNPassword, prompt: Text(openVPN.username.isEmpty ? "Not needed without a username" : passwordPrompt))
+        .disabled(openVPN.username.isEmpty)
+
     case .wireGuard:
       TextField("Interface", text: $wireGuard.interfaceName, prompt: Text("peony0"))
-      VStack(alignment: .leading, spacing: 6) {
-        HStack {
-          Text("Configuration")
-          Spacer()
-          Button("Import .conf…", action: importWireGuard)
-        }
-        if hasSavedSecret && secret.isEmpty {
-          Text("A configuration is saved in your Keychain. Paste or import a new one to replace it.")
-            .font(.caption)
-            .foregroundStyle(Brand.muted)
-        }
-        TextEditor(text: $secret)
-          .font(.system(.callout, design: .monospaced))
-          .frame(minHeight: 140)
-          .scrollContentBackground(.hidden)
-          .background(Brand.chip, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        Text("Stored in your Keychain. PostUp and PreDown lines aren't allowed, since they'd run as root.")
-          .font(.caption)
-          .foregroundStyle(Brand.muted)
-      }
+      configEditor(fileExtensions: ["conf"], footnote: "Stored in your Keychain. PostUp and PreDown lines aren't allowed, since they'd run as root.")
 
     case .netBird:
       TextField("Management URL", text: $netBird.managementURL, prompt: Text("Leave empty for NetBird Cloud"))
@@ -336,12 +334,36 @@ private struct ProfileEditor: View {
   }
 
   private var passwordPrompt: String {
-    hasSavedSecret ? "Saved in Keychain. Type to replace." : "Required"
+    (choice == .openVPN ? hasSavedOpenVPNPassword : hasSavedSecret) ? "Saved in Keychain. Type to replace." : "Required"
   }
 
-  private func importWireGuard() {
+  /// A pasted or imported config, which is saved to the Keychain whole.
+  private func configEditor(fileExtensions: [String], footnote: String) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        Text("Configuration")
+        Spacer()
+        Button("Import .\(fileExtensions[0])…") { importConfig(fileExtensions) }
+      }
+      if hasSavedSecret && secret.isEmpty {
+        Text("A configuration is saved in your Keychain. Paste or import a new one to replace it.")
+          .font(.caption)
+          .foregroundStyle(Brand.muted)
+      }
+      TextEditor(text: $secret)
+        .font(.system(.callout, design: .monospaced))
+        .frame(minHeight: 140)
+        .scrollContentBackground(.hidden)
+        .background(Brand.chip, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+      Text(footnote)
+        .font(.caption)
+        .foregroundStyle(Brand.muted)
+    }
+  }
+
+  private func importConfig(_ fileExtensions: [String]) {
     let panel = NSOpenPanel()
-    panel.allowedContentTypes = [UTType(filenameExtension: "conf") ?? .plainText, .plainText]
+    panel.allowedContentTypes = fileExtensions.compactMap { UTType(filenameExtension: $0) } + [.plainText]
     guard panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) else { return }
     secret = text
     if name.isEmpty { name = url.deletingPathExtension().lastPathComponent }
@@ -350,12 +372,14 @@ private struct ProfileEditor: View {
   private func save() {
     do {
       let profile = try buildProfile()
-      model.store.save(profile, secret: secret.isEmpty ? nil : secret)
+      model.store.save(profile, secret: secret.isEmpty ? nil : secret, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
       model.settingsSelection = .profile(profile.id)
       error = nil
     } catch let failure as Validation.Failure {
       error = failure.description
     } catch let problem as WireGuardConfig.Problem {
+      error = problem.description
+    } catch let problem as OpenVPNConfig.Problem {
       error = problem.description
     } catch {
       self.error = error.localizedDescription
@@ -380,6 +404,15 @@ private struct ProfileEditor: View {
       settings.username = try Validation.secretLine(settings.username, field: "Username")
       if let cert = settings.serverCert { settings.serverCert = try Validation.serverCertPin(cert) }
       kind = .openConnect(settings)
+    case .openVPN:
+      var settings = openVPN
+      settings.username = try Validation.secretLine(settings.username, field: "Username", allowEmpty: true)
+      if !secret.isEmpty || !hasSavedSecret {
+        let config = try OpenVPNConfig(validating: secret)
+        secret = config.text
+        settings.server = config.server
+      }
+      kind = .openVPN(settings)
     case .wireGuard:
       var settings = wireGuard
       settings.interfaceName = try Validation.interfaceName(settings.interfaceName)
@@ -416,7 +449,9 @@ private struct KindPicker: View {
                 .fill(choice == kind ? AnyShapeStyle(Brand.rose) : AnyShapeStyle(Brand.hairline)))
             Text(kind.title)
               .font(.callout)
-              .lineLimit(1)
+              .lineLimit(2)
+              .multilineTextAlignment(.center)
+              .frame(maxHeight: .infinity, alignment: .top)
           }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 10)
@@ -428,5 +463,6 @@ private struct KindPicker: View {
         .buttonStyle(PressableStyle())
       }
     }
+    .fixedSize(horizontal: false, vertical: true)
   }
 }

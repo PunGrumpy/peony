@@ -42,7 +42,7 @@ public struct PanelState: Equatable, Sendable {
 
 /// One VPN, as the panel shows it.
 public struct Route: Equatable, Identifiable, Sendable {
-  public enum Kind: Equatable, Sendable { case forti, openConnect, wireGuard, netBird, tailscale }
+  public enum Kind: Equatable, Sendable { case forti, openConnect, wireGuard, openVPN, netBird, tailscale }
 
   public var id: UUID
   public var name: String
@@ -62,6 +62,7 @@ public struct Route: Equatable, Identifiable, Sendable {
     case .forti: "lock.shield.fill"
     case .openConnect: "network.badge.shield.half.filled"
     case .wireGuard: "bolt.horizontal.fill"
+    case .openVPN: "key.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
     case .tailscale: "circle.grid.3x3.fill"
     }

@@ -20,6 +20,7 @@ final class Connection {
   @ObservationIgnored private var failure: TunnelFailure?
   @ObservationIgnored private var pendingText = ""
   @ObservationIgnored private var fortiParser = FortiLogParser()
+  @ObservationIgnored private var openVPNParser = OpenVPNLogParser()
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "connection")
 
   // MARK: Connect
@@ -37,6 +38,7 @@ final class Connection {
     log.removeAll()
     pendingText = ""
     fortiParser = FortiLogParser()
+    openVPNParser = OpenVPNLogParser()
     before = InterfaceSnapshot.current()
 
     if let problem = preflight(profile) {
@@ -45,7 +47,7 @@ final class Connection {
     }
 
     var secret = ""
-    if profile.needsPassword || { if case .wireGuard = profile.kind { true } else { false } }() {
+    if profile.needsPassword || profile.keepsConfigInKeychain {
       switch Keychain.secret(for: profile.id) {
       case .secret(let saved):
         secret = saved
@@ -85,6 +87,17 @@ final class Connection {
         state = .failed(failure ?? TunnelFailure(message: lastErrorLine(result.output) ?? "wg-quick couldn't bring the tunnel up.", fix: .editProfile))
       }
 
+    case .openVPN(let settings):
+      var password = ""
+      if profile.needsPassword {
+        guard case .secret(let saved) = Keychain.secret(for: profile.id, .openVPNPassword) else {
+          state = .failed(TunnelFailure(message: "Peony can't read the password saved for \(profile.name). Enter it once more in Settings.", fix: .editProfile))
+          return
+        }
+        password = saved
+      }
+      launchHelper(.openVPN(.init(config: secret, username: settings.username, password: password)))
+
     case .netBird(let settings):
       var arguments = ["up"]
       if !settings.managementURL.isEmpty { arguments += ["--management-url", settings.managementURL] }
@@ -118,6 +131,7 @@ final class Connection {
     case .forti: ("openfortivpn", "brew install openfortivpn")
     case .openConnect: ("openconnect", "brew install openconnect")
     case .wireGuard: ("wg-quick", "brew install wireguard-tools")
+    case .openVPN: ("openvpn", "brew install openvpn")
     case .netBird: ("netbird", "brew install netbirdio/tap/netbird")
     case .tailscale: ("tailscale", "brew install --cask tailscale-app")
     }
@@ -132,11 +146,14 @@ final class Connection {
         message: "Peony needs a one-time admin approval to set up routes and DNS for VPNs.",
         fix: .installHelper)
     }
-    if profile.needsPassword || { if case .wireGuard = profile.kind { true } else { false } }() {
+    if profile.needsPassword || profile.keepsConfigInKeychain {
       if !Keychain.hasSecret(for: profile.id) {
-        let what = profile.needsPassword ? "a password" : "a configuration"
+        let what = profile.keepsConfigInKeychain ? "a configuration" : "a password"
         return TunnelFailure(message: "\(profile.name) doesn't have \(what) yet.", fix: .editProfile)
       }
+    }
+    if case .openVPN = profile.kind, profile.needsPassword, !Keychain.hasSecret(for: profile.id, .openVPNPassword) {
+      return TunnelFailure(message: "\(profile.name) doesn't have a password yet.", fix: .editProfile)
     }
     return nil
   }
@@ -165,6 +182,10 @@ final class Connection {
     } else if await running("openconnect") {
       let profile = lastProfile.flatMap { if case .openConnect = $0.kind { $0 } else { nil } }
         ?? profiles.first { if case .openConnect = $0.kind { true } else { false } }
+      take(profile, address: snapshot.ipv4.first { $0.key.hasPrefix("utun") && !InterfaceSnapshot.isCGNAT($0.value) }?.value ?? "")
+    } else if await running("openvpn") {
+      let profile = lastProfile.flatMap { if case .openVPN = $0.kind { $0 } else { nil } }
+        ?? profiles.first { if case .openVPN = $0.kind { true } else { false } }
       take(profile, address: snapshot.ipv4.first { $0.key.hasPrefix("utun") && !InterfaceSnapshot.isCGNAT($0.value) }?.value ?? "")
     } else {
       for profile in profiles where profile.kind.daemon != nil {
@@ -197,7 +218,7 @@ final class Connection {
     state = .disconnecting
 
     switch kind {
-    case .forti, .openConnect:
+    case .forti, .openConnect, .openVPN:
       if let process {
         // sudo relays SIGINT to the helper, which passes it to the tunnel so it can tear down routes.
         process.interrupt()
@@ -244,7 +265,7 @@ final class Connection {
       if newAddress() == nil, state.address != nil {
         state = .failed(TunnelFailure(message: "The WireGuard interface went away."))
       }
-    case .forti, .openConnect:
+    case .forti, .openConnect, .openVPN:
       if case .on(let address) = state, address.isEmpty, let found = newAddress() {
         state = .on(address: found)
       }
@@ -322,6 +343,7 @@ final class Connection {
     switch kind {
     case .forti: fortiParser.consume(line)
     case .openConnect: OpenConnectLogParser().consume(line)
+    case .openVPN: openVPNParser.consume(line)
     default: nil
     }
   }

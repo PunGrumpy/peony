@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <LegalPage title="Terms of Service" updated="October 12, 2026">
+  <LegalPage title="Terms of Service" updated="October 14, 2026">
     <p>
       These terms cover the Peony app and this website. The source code is
       released under the <a href={site.license}>MIT License</a>, which governs
@@ -48,13 +48,15 @@ const Page = () => (
 
     <LegalSection title="Other software and services">
       <p>
-        Peony drives openfortivpn, openconnect, wireguard-tools, NetBird, and
-        Tailscale, which you install yourself and which have their own licenses.
+        Peony drives openfortivpn, openconnect, OpenVPN, wireguard-tools,
+        NetBird, and Tailscale, which you install yourself and which have their
+        own licenses.
         Your use of each VPN stays under its operator&apos;s terms.
       </p>
       <p>
         Peony isn&apos;t made, endorsed, or supported by Fortinet, Cisco, Palo
-        Alto Networks, Ivanti, F5, WireGuard, NetBird, Tailscale, or the
+        Alto Networks, Ivanti, F5, OpenVPN Inc., WireGuard, NetBird, Tailscale,
+        or the
         authors of those clients.
       </p>
     </LegalSection>

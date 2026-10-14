@@ -24,15 +24,15 @@ const helper = [
     title: "One request, on stdin",
   },
   {
-    body: "Line breaks, option-like values and WireGuard’s PostUp and PreDown hooks are rejected before they reach a config file or a command line.",
+    body: "Line breaks, option-like values, WireGuard’s PostUp and PreDown hooks and OpenVPN’s scripts and plugins are rejected before they reach a config file or a command line.",
     title: "Every field is validated",
   },
   {
-    body: "It only executes clients from Homebrew’s bin directories, never a path it was handed.",
+    body: "It only executes clients from Homebrew’s bin and sbin directories, never a path it was handed.",
     title: "Homebrew clients only",
   },
   {
-    body: "Generated configs go to a root-only directory. FortiGate’s is deleted as soon as openfortivpn has read it.",
+    body: "Generated configs go to a root-only directory. FortiGate’s and OpenVPN’s are deleted as soon as the client has read them.",
     title: "Configs don’t linger",
   },
 ];
@@ -49,7 +49,7 @@ const Page = () => (
             <span className="bg-rose-200 text-rose-900 rounded-md px-2 py-[3px] font-medium tabular-nums">
               v{site.version}
             </span>
-            Seven kinds of VPN, one switch
+            Nine kinds of VPN, one switch
           </Link>
           <h1
             className="rise text-gray-900 mt-6 max-w-[30rem] font-serif text-[clamp(2rem,4.6vw,2.625rem)] leading-[1.14] font-medium tracking-[-0.035em] text-pretty"
@@ -149,8 +149,8 @@ const Page = () => (
         ))}
       </ol>
       <p className="border-gray-400 text-gray-900 -mx-6 border-t px-6 py-5 text-[14px] sm:-mx-10 sm:px-10">
-        Passwords and WireGuard configs live in your Keychain. Remove everything
-        with{" "}
+        Passwords and WireGuard and OpenVPN configs live in your Keychain.
+        Remove everything with{" "}
         <code className="text-gray-1000 font-mono text-[13px] whitespace-nowrap">
           brew uninstall --zap peony
         </code>

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 const Page = () => (
-  <LegalPage title="Licenses and Trademarks" updated="October 12, 2026">
+  <LegalPage title="Licenses and Trademarks" updated="October 14, 2026">
     <LegalSection title="Peony">
       <p>
         Copyright © 2026 {site.author.name}. The app, its helper, and this
@@ -30,7 +30,7 @@ const Page = () => (
 
     <LegalSection title="VPN logos">
       <p>
-        The Fortinet, Cisco, Palo Alto Networks, F5, WireGuard, and Tailscale
+        The Fortinet, Cisco, Palo Alto Networks, F5, OpenVPN, WireGuard, and Tailscale
         logos come from <a href="https://simpleicons.org">Simple Icons</a>,
         released under CC0 1.0. The NetBird logo comes from{" "}
         <a href="https://selfh.st/icons/">selfh.st/icons</a> and the Ivanti logo
@@ -45,9 +45,9 @@ const Page = () => (
     <LegalSection title="Trademarks">
       <p>
         The names and logos of VPN products belong to their owners. WireGuard is
-        a registered trademark of Jason A. Donenfeld. Apple, Mac, and macOS are
-        trademarks of Apple Inc. Naming them here doesn&apos;t mean their owners
-        endorse Peony.
+        a registered trademark of Jason A. Donenfeld, and OpenVPN of OpenVPN
+        Inc. Apple, Mac, and macOS are trademarks of Apple Inc. Naming them here
+        doesn&apos;t mean their owners endorse Peony.
       </p>
     </LegalSection>
 
