@@ -48,14 +48,14 @@ const Page = () => (
 
     <LegalSection title="Other software and services">
       <p>
-        Peony drives openfortivpn, openconnect, wireguard-tools, and NetBird,
-        which you install yourself and which have their own licenses. Your use
-        of each VPN stays under its operator&apos;s terms.
+        Peony drives openfortivpn, openconnect, wireguard-tools, NetBird, and
+        Tailscale, which you install yourself and which have their own licenses.
+        Your use of each VPN stays under its operator&apos;s terms.
       </p>
       <p>
         Peony isn&apos;t made, endorsed, or supported by Fortinet, Cisco, Palo
-        Alto Networks, Ivanti, F5, WireGuard, NetBird, or the authors of those
-        clients.
+        Alto Networks, Ivanti, F5, WireGuard, NetBird, Tailscale, or the
+        authors of those clients.
       </p>
     </LegalSection>
 

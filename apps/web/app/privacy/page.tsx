@@ -56,8 +56,8 @@ const Page = () => (
       <ul>
         <li>
           <strong>Your VPN.</strong> The client you installed (openfortivpn,
-          openconnect, WireGuard, or NetBird) connects to the server in your
-          settings and signs in with your credentials. Your VPN&apos;s operator
+          openconnect, WireGuard, NetBird, or Tailscale) connects to the server
+          in your settings and signs in with your credentials. Your VPN&apos;s operator
           handles that traffic under its own policy.
         </li>
         <li>

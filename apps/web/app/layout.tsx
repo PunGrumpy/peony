@@ -43,6 +43,7 @@ export const metadata: Metadata = {
     "openconnect",
     "WireGuard",
     "NetBird",
+    "Tailscale",
   ],
   metadataBase: new URL(url),
   openGraph: {

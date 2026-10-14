@@ -244,6 +244,7 @@ final class AppModel {
     case .openConnect: .openConnect
     case .wireGuard: .wireGuard
     case .netBird: .netBird
+    case .tailscale: .tailscale
     }
   }
 }

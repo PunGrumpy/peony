@@ -28,7 +28,7 @@ The helper's rules are described in the [README](https://github.com/PunGrumpy/pe
 
 ## What doesn't
 
-- Bugs in openfortivpn, openconnect, wireguard-tools, or NetBird. Please report those to their projects.
+- Bugs in openfortivpn, openconnect, wireguard-tools, NetBird, or Tailscale. Please report those to their projects.
 - Anything that needs root or your login password to begin with.
 - The app not being notarized yet. That's known, and the README says how to open it.
 

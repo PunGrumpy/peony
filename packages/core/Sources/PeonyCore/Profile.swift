@@ -22,6 +22,8 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     case openConnect(OpenConnect)
     case wireGuard(WireGuard)
     case netBird(NetBird)
+    /// The Tailscale client. Its account and login server live in Tailscale itself.
+    case tailscale
   }
 
   /// FortiGate SSL-VPN through openfortivpn.
@@ -99,6 +101,7 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     case .openConnect(let settings): settings.serverProtocol.title
     case .wireGuard: "WireGuard"
     case .netBird: "NetBird"
+    case .tailscale: "Tailscale"
     }
   }
 
@@ -109,6 +112,7 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
     case .openConnect(let settings): settings.server
     case .wireGuard(let settings): settings.interfaceName
     case .netBird(let settings): settings.managementURL.isEmpty ? "NetBird Cloud" : Self.hostOnly(settings.managementURL)
+    case .tailscale: "Tailscale"
     }
   }
 
@@ -116,7 +120,7 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
   public var needsPassword: Bool {
     switch kind {
     case .forti, .openConnect: true
-    case .wireGuard, .netBird: false
+    case .wireGuard, .netBird, .tailscale: false
     }
   }
 

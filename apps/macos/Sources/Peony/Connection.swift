@@ -88,30 +88,45 @@ final class Connection {
     case .netBird(let settings):
       var arguments = ["up"]
       if !settings.managementURL.isEmpty { arguments += ["--management-url", settings.managementURL] }
-      let result = try? await Command.run(Tools.find("netbird") ?? "/opt/homebrew/bin/netbird", arguments: arguments)
-      appendLog(result?.text ?? "")
-      await refreshNetBird()
-      if state == .connecting {
-        let detail = result.flatMap { lastErrorLine($0.text) }
-        state = .failed(TunnelFailure(message: detail ?? "NetBird didn't connect. If it asked you to sign in, finish that in your browser and try again."))
+      await bringUp(.netBird, arguments: arguments,
+                    fallback: "NetBird didn't connect. If it asked you to sign in, finish that in your browser and try again.")
+
+    case .tailscale:
+      // Bare `up` keeps the exit node and other settings chosen in Tailscale,
+      // but would wait on a browser if nobody is signed in.
+      guard let status = await Daemon.tailscale.status(), !status.needsLogin else {
+        state = .failed(TunnelFailure(message: "Tailscale isn't running, signed in or approved yet. Open the Tailscale app, finish signing in, then connect again."))
+        return
       }
+      await bringUp(.tailscale, arguments: ["up"], fallback: "Tailscale didn't connect.")
+    }
+  }
+
+  private func bringUp(_ daemon: Daemon, arguments: [String], fallback: String) async {
+    let result = try? await Command.run(daemon.executable, arguments: arguments)
+    appendLog(result?.text ?? "")
+    await refreshDaemon()
+    if state == .connecting {
+      let detail = result.flatMap { lastErrorLine($0.text) }
+      state = .failed(TunnelFailure(message: detail ?? fallback))
     }
   }
 
   /// Catches what would otherwise fail deep inside a root process, with a fix the user can act on.
   private func preflight(_ profile: Profile) -> TunnelFailure? {
-    let tool: (name: String, formula: String) = switch profile.kind {
-    case .forti: ("openfortivpn", "openfortivpn")
-    case .openConnect: ("openconnect", "openconnect")
-    case .wireGuard: ("wg-quick", "wireguard-tools")
-    case .netBird: ("netbird", "netbirdio/tap/netbird")
+    let tool: (name: String, install: String) = switch profile.kind {
+    case .forti: ("openfortivpn", "brew install openfortivpn")
+    case .openConnect: ("openconnect", "brew install openconnect")
+    case .wireGuard: ("wg-quick", "brew install wireguard-tools")
+    case .netBird: ("netbird", "brew install netbirdio/tap/netbird")
+    case .tailscale: ("tailscale", "brew install --cask tailscale-app")
     }
-    if Tools.find(tool.name) == nil {
+    if AppTools.find(tool.name) == nil {
       return TunnelFailure(
         message: "\(profile.kindTitle) needs \(tool.name), which isn't installed yet.",
-        fix: .installTool(name: tool.name, command: "brew install \(tool.formula)"))
+        fix: .installTool(name: tool.name, command: tool.install))
     }
-    if case .netBird = profile.kind { return nil }
+    if profile.kind.daemon != nil { return nil }
     if HelperInstaller.status != .installed {
       return TunnelFailure(
         message: "Peony needs a one-time admin approval to set up routes and DNS for VPNs.",
@@ -131,7 +146,7 @@ final class Connection {
   private static let lastProfileKey = "lastProfileID"
 
   /// Picks up a tunnel that's already running: one Peony started before it was quit,
-  /// crashed or updated, or a NetBird connection made elsewhere. Without this the panel
+  /// crashed or updated, or a NetBird or Tailscale connection made elsewhere. Without this the panel
   /// would say "Not connected" over a live tunnel, and connecting again would stack a second one.
   func adopt(from profiles: [Profile]) async {
     guard state == .off else { return }
@@ -151,11 +166,15 @@ final class Connection {
       let profile = lastProfile.flatMap { if case .openConnect = $0.kind { $0 } else { nil } }
         ?? profiles.first { if case .openConnect = $0.kind { true } else { false } }
       take(profile, address: snapshot.ipv4.first { $0.key.hasPrefix("utun") && !InterfaceSnapshot.isCGNAT($0.value) }?.value ?? "")
-    } else if let netbird = profiles.first(where: { if case .netBird = $0.kind { true } else { false } }) {
-      profileID = netbird.id
-      kind = netbird.kind
-      await refreshNetBird()
-      if state == .off { profileID = nil; kind = nil }
+    } else {
+      for profile in profiles where profile.kind.daemon != nil {
+        profileID = profile.id
+        kind = profile.kind
+        await refreshDaemon()
+        if state != .off { break }
+        profileID = nil
+        kind = nil
+      }
     }
   }
 
@@ -195,8 +214,8 @@ final class Connection {
     case .wireGuard(let settings):
       let result = await runHelper(.wireGuardDown(interfaceName: settings.interfaceName))
       appendLog(result.output)
-    case .netBird:
-      _ = try? await Command.run(Tools.find("netbird") ?? "/opt/homebrew/bin/netbird", "down")
+    case .netBird, .tailscale:
+      if let daemon = kind.daemon { _ = try? await Command.run(daemon.executable, "down") }
     }
     finish()
   }
@@ -215,12 +234,12 @@ final class Connection {
   // MARK: Monitoring
 
   /// Called on every interface change. Tunnels without a supervising process
-  /// (WireGuard, NetBird) are only noticed going away this way.
+  /// (WireGuard, NetBird, Tailscale) are only noticed going away this way.
   func interfacesChanged() async {
     guard let kind, state.address != nil || state == .connecting else { return }
     switch kind {
-    case .netBird:
-      await refreshNetBird()
+    case .netBird, .tailscale:
+      await refreshDaemon()
     case .wireGuard:
       if newAddress() == nil, state.address != nil {
         state = .failed(TunnelFailure(message: "The WireGuard interface went away."))
@@ -232,11 +251,8 @@ final class Connection {
     }
   }
 
-  private func refreshNetBird() async {
-    guard let netbird = Tools.find("netbird"),
-          let result = try? await Command.run(netbird, "status", "--json"),
-          let status = try? NetBirdStatus(json: result.output)
-    else { return }
+  private func refreshDaemon() async {
+    guard let status = await kind?.daemon?.status() else { return }
     if status.isConnected, state != .disconnecting {
       if state.address == nil { since = .now }
       state = .on(address: status.address ?? "")
