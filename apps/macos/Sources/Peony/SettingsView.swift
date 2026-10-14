@@ -9,20 +9,18 @@ struct SettingsView: View {
 
   var body: some View {
     NavigationSplitView {
-      List(selection: $model.settingsSelection) {
-        SidebarRow(title: "General", symbol: "gearshape.fill", tint: Brand.muted)
-          .tag(SettingsSelection.general)
-        Section("VPNs") {
-          ForEach(model.store.profiles) { profile in
-            SidebarRow(title: profile.name, symbol: Self.symbol(for: profile.kind), tint: Brand.rose,
-                       isLive: model.connection.profileID == profile.id && model.connection.state.address != nil)
-              .tag(SettingsSelection.profile(profile.id))
-          }
-          .onMove { model.store.move(from: $0, to: $1) }
-          SidebarRow(title: "Add VPN", symbol: "plus", tint: Brand.hairline, glyph: Brand.muted)
-            .foregroundStyle(Brand.muted)
-            .tag(SettingsSelection.new)
-        }
+      ScrollView {
+        SettingsSidebar(
+          top: [SidebarEntry(id: .general, title: "General", symbol: "gearshape.fill", tint: Brand.muted)],
+          sectionTitle: "VPNs",
+          items: model.store.profiles.map { profile in
+            SidebarEntry(id: .profile(profile.id), title: profile.name, symbol: Self.symbol(for: profile.kind),
+                         tint: Brand.rose,
+                         isLive: model.connection.profileID == profile.id && model.connection.state.address != nil)
+          },
+          bottom: [SidebarEntry(id: .new, title: "Add VPN", symbol: "plus", tint: Brand.hairline, glyph: Brand.ink)],
+          selection: $model.settingsSelection,
+          move: { model.store.move(from: $0, to: $1) })
       }
       .navigationSplitViewColumnWidth(min: 180, ideal: 200)
     } detail: {
@@ -53,27 +51,6 @@ struct SettingsView: View {
     case .wireGuard: "bolt.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
     case .tailscale: "circle.grid.3x3.fill"
-    }
-  }
-}
-
-/// A sidebar entry with its pane's icon tile. A live VPN gets a rose dot, so you can find it.
-private struct SidebarRow: View {
-  let title: String
-  let symbol: String
-  let tint: Color
-  var glyph: Color = .white
-  var isLive = false
-
-  var body: some View {
-    HStack(spacing: 8) {
-      IconTile(symbol: symbol, size: 20, fill: tint, glyph: glyph)
-      Text(title).lineLimit(1)
-      Spacer(minLength: 4)
-      if isLive {
-        Circle().fill(Brand.rose).frame(width: 6, height: 6)
-          .accessibilityLabel("Connected")
-      }
     }
   }
 }
