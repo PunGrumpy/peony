@@ -8,7 +8,7 @@
 
 Peony switches between your VPNs and keeps only one on, so their routes and DNS never fight. Once a tunnel is up, it checks the hosts you care about, so "connected" means you can reach them.
 
-It works with FortiGate, AnyConnect, GlobalProtect, Pulse, F5, WireGuard and NetBird.
+It works with FortiGate, AnyConnect, GlobalProtect, Pulse, F5, WireGuard, NetBird and Tailscale.
 
 ## Install
 
@@ -25,6 +25,7 @@ Peony drives the open-source clients, so install the ones your VPNs need:
 | FortiGate SSL-VPN | `brew install openfortivpn` |
 | AnyConnect, GlobalProtect, Pulse, F5, Array | `brew install openconnect` |
 | WireGuard | `brew install wireguard-tools` |
+| Tailscale | `brew install --cask tailscale-app` or [Tailscale's Mac app](https://tailscale.com/download/mac) |
 | NetBird | [NetBird's installer](https://docs.netbird.io/how-to/installation) |
 
 ## Use

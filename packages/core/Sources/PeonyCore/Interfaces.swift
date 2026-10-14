@@ -32,11 +32,6 @@ public struct InterfaceSnapshot: Equatable, Sendable {
   /// The address of the PPP link openfortivpn brings up.
   public var fortiAddress: String? { ipv4["ppp0"] }
 
-  /// NetBird's WireGuard interface: a utun carrying an address in 100.64.0.0/10 (CGNAT space).
-  public var netBirdAddress: String? {
-    ipv4.first { name, address in name.hasPrefix("utun") && Self.isCGNAT(address) }?.value
-  }
-
   public static func isCGNAT(_ address: String) -> Bool {
     let octets = address.split(separator: ".").compactMap { Int($0) }
     guard octets.count == 4 else { return false }

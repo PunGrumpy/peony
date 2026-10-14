@@ -30,6 +30,7 @@ export const vpns = [
   { id: "f5", name: "F5" },
   { id: "wireguard", name: "WireGuard" },
   { id: "netbird", name: "NetBird" },
+  { id: "tailscale", name: "Tailscale" },
 ] as const;
 
 export const clients = [
@@ -39,6 +40,7 @@ export const clients = [
     vpn: "AnyConnect, GlobalProtect, Pulse, F5, Array",
   },
   { command: "brew install wireguard-tools", vpn: "WireGuard" },
+  { command: "brew install --cask tailscale-app", vpn: "Tailscale" },
 ] as const;
 
 export const netbird = "https://docs.netbird.io/how-to/installation";

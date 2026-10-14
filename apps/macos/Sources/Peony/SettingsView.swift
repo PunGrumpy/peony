@@ -50,6 +50,7 @@ struct SettingsView: View {
     case .openConnect: "network.badge.shield.half.filled"
     case .wireGuard: "bolt.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
+    case .tailscale: "circle.grid.3x3.fill"
     }
   }
 }
@@ -82,10 +83,11 @@ private struct GeneralSettings: View {
       }
 
       Section("Tools") {
-        ToolRow(name: "openfortivpn", purpose: "FortiGate", formula: "openfortivpn")
-        ToolRow(name: "openconnect", purpose: "AnyConnect, GlobalProtect, Pulse, F5", formula: "openconnect")
-        ToolRow(name: "wg-quick", purpose: "WireGuard", formula: "wireguard-tools")
-        ToolRow(name: "netbird", purpose: "NetBird", formula: "netbirdio/tap/netbird")
+        ToolRow(name: "openfortivpn", purpose: "FortiGate", install: "brew install openfortivpn")
+        ToolRow(name: "openconnect", purpose: "AnyConnect, GlobalProtect, Pulse, F5", install: "brew install openconnect")
+        ToolRow(name: "wg-quick", purpose: "WireGuard", install: "brew install wireguard-tools")
+        ToolRow(name: "netbird", purpose: "NetBird", install: "brew install netbirdio/tap/netbird")
+        ToolRow(name: "tailscale", purpose: "Tailscale", install: "brew install --cask tailscale-app")
       }
 
       Section {
@@ -114,16 +116,16 @@ private struct GeneralSettings: View {
 private struct ToolRow: View {
   let name: String
   let purpose: String
-  let formula: String
+  let install: String
 
   var body: some View {
     LabeledContent {
-      if Tools.find(name) != nil {
+      if AppTools.find(name) != nil {
         Label("Installed", systemImage: "checkmark.circle.fill")
           .labelStyle(.titleAndIcon)
           .foregroundStyle(Brand.muted)
       } else {
-        Button("Install with Homebrew") { Terminal.run("brew install \(formula)") }
+        Button("Install with Homebrew") { Terminal.run(install) }
       }
     } label: {
       Text(name).font(.system(.body, design: .monospaced))
@@ -151,7 +153,7 @@ private struct PageTitle: View {
 // MARK: - Profile editor
 
 private enum KindChoice: String, CaseIterable, Identifiable {
-  case forti, openConnect, wireGuard, netBird
+  case forti, openConnect, wireGuard, netBird, tailscale
   var id: Self { self }
 
   var title: String {
@@ -160,6 +162,7 @@ private enum KindChoice: String, CaseIterable, Identifiable {
     case .openConnect: "AnyConnect & more"
     case .wireGuard: "WireGuard"
     case .netBird: "NetBird"
+    case .tailscale: "Tailscale"
     }
   }
 
@@ -169,6 +172,7 @@ private enum KindChoice: String, CaseIterable, Identifiable {
     case .openConnect: "network.badge.shield.half.filled"
     case .wireGuard: "bolt.horizontal.fill"
     case .netBird: "point.3.filled.connected.trianglepath.dotted"
+    case .tailscale: "circle.grid.3x3.fill"
     }
   }
 
@@ -178,6 +182,7 @@ private enum KindChoice: String, CaseIterable, Identifiable {
     case .openConnect: self = .openConnect
     case .wireGuard: self = .wireGuard
     case .netBird: self = .netBird
+    case .tailscale: self = .tailscale
     }
   }
 }
@@ -323,6 +328,10 @@ private struct ProfileEditor: View {
       TextField("Management URL", text: $netBird.managementURL, prompt: Text("Leave empty for NetBird Cloud"))
       Text("The first time, NetBird opens your browser to sign in.")
         .foregroundStyle(Brand.muted)
+
+    case .tailscale:
+      Text("Sign in from the Tailscale app first. Peony turns it on and off; accounts and exit nodes stay in Tailscale.")
+        .foregroundStyle(Brand.muted)
     }
   }
 
@@ -380,6 +389,8 @@ private struct ProfileEditor: View {
       var settings = netBird
       if !settings.managementURL.isEmpty { settings.managementURL = try Validation.server(settings.managementURL, field: "Management URL") }
       kind = .netBird(settings)
+    case .tailscale:
+      kind = .tailscale
     }
     let hosts = destinations.split(whereSeparator: { $0 == "," || $0 == " " || $0 == "\n" }).map(String.init)
     for host in hosts where Probe.Target(host) == nil {

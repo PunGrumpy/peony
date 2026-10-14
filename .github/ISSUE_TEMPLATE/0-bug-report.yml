@@ -45,13 +45,14 @@ body:
         - Array (openconnect)
         - WireGuard (wireguard-tools)
         - NetBird
+        - Tailscale
     validations:
       required: true
 
   - type: input
     attributes:
       label: Client version
-      description: The output of `openfortivpn --version`, `openconnect --version`, `wg --version`, or `netbird version`.
+      description: The output of `openfortivpn --version`, `openconnect --version`, `wg --version`, `netbird version`, or `tailscale version`.
       placeholder: "openconnect v9.12"
 
   - type: textarea
