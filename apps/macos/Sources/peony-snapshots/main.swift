@@ -121,6 +121,47 @@ for (name, state) in states {
   }
 }
 
+// Settings pane headers. The window itself needs the app's model, so only its own pieces render here.
+let headers = HStack(alignment: .top, spacing: 0) {
+  SettingsHeader(symbol: "gearshape.fill", tint: Brand.muted, title: "General",
+                 subtitle: "Peony keeps one VPN on at a time, so routes and DNS never fight.")
+  SettingsHeader(symbol: "lock.shield.fill", tint: Brand.rose, title: "Work", subtitle: "FortiGate")
+  SettingsHeader(symbol: "plus", tint: Brand.ink, glyph: Brand.paper, title: "Add VPN",
+                 subtitle: "Pick the kind of VPN, then fill in what your admin gave you.")
+}
+.frame(width: 960)
+.padding(20)
+.background(Brand.paper)
+
+for dark in [false, true] {
+  render(headers, dark: dark, to: output.appending(path: "settings-headers-\(dark ? "dark" : "light").png"))
+}
+
+// The sidebar beside a pane, to check the two halves of the window read as one.
+enum Pane: Hashable { case general, work, lab, new }
+let settings = HStack(spacing: 0) {
+  SettingsSidebar(
+    top: [SidebarEntry(id: Pane.general, title: "General", symbol: "gearshape.fill", tint: Brand.muted)],
+    sectionTitle: "VPNs",
+    items: [
+      SidebarEntry(id: .work, title: "Work", symbol: work.symbol, tint: Brand.rose, isLive: true),
+      SidebarEntry(id: .lab, title: "Lab", symbol: lab.symbol, tint: Brand.rose),
+    ],
+    bottom: [SidebarEntry(id: .new, title: "Add VPN", symbol: "plus", tint: Brand.hairline, glyph: Brand.ink)],
+    selection: .constant(.work))
+  .frame(width: 200, height: 300, alignment: .top)
+  .background(Brand.chip)
+  Rectangle().fill(Brand.hairline).frame(width: 1)
+  SettingsHeader(symbol: work.symbol, tint: Brand.rose, title: "Work", subtitle: "FortiGate")
+    .frame(width: 420, height: 300, alignment: .top)
+    .padding(.top, 20)
+}
+.background(Brand.paper)
+
+for dark in [false, true] {
+  render(settings, dark: dark, to: output.appending(path: "settings-\(dark ? "dark" : "light").png"))
+}
+
 // The menu bar item in each state, on a light and a dark bar.
 let bar = HStack(spacing: 18) {
   MenuBarLabel(filledPetals: 0, title: nil)
@@ -135,4 +176,4 @@ for dark in [false, true] {
   render(bar.foregroundStyle(dark ? .white : .black).background(dark ? Color(white: 0.16) : Color(white: 0.93)),
          dark: dark, to: output.appending(path: "menubar-\(dark ? "dark" : "light").png"))
 }
-print("Wrote \(states.count * 2 + 2) snapshots to \(output.path)")
+print("Wrote \(states.count * 2 + 6) snapshots to \(output.path)")

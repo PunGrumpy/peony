@@ -5,6 +5,8 @@ import SwiftUI
 public struct PanelView: View {
   let state: PanelState
   let actions: PanelActions
+  /// The active route's raised background, shared so it slides from one row to the next.
+  @Namespace private var lift
 
   public init(state: PanelState, actions: PanelActions) {
     self.state = state
@@ -29,17 +31,18 @@ public struct PanelView: View {
 
         SectionLabel(text: "Routes")
           .padding(.bottom, 6)
-        VStack(spacing: 4) {
+        Well {
           ForEach(Array(state.routes.enumerated()), id: \.element.id) { index, route in
-            RouteCard(route: route, state: state.state(of: route), shortcut: index < 9 ? index + 1 : nil,
-                      locked: state.isBusy, connect: { actions.connect(route.id) })
+            RouteRow(route: route, state: state.state(of: route), shortcut: index < 9 ? index + 1 : nil,
+                     locked: state.isBusy, lift: lift, connect: { actions.connect(route.id) })
           }
-          AddCard(action: actions.addVPN)
+          WellDivider()
+          AddRow(action: actions.addVPN)
         }
 
         if state.isLive, !state.destinations.isEmpty {
           // The panel grows to fit at once, so only a fade is left to animate.
-          VStack(alignment: .leading, spacing: 2) {
+          VStack(alignment: .leading, spacing: 6) {
             SectionLabel(text: "Reachable")
             DestinationList(destinations: state.destinations)
           }
@@ -49,7 +52,7 @@ public struct PanelView: View {
       }
 
       Footer(opensAtLogin: state.opensAtLogin, actions: actions)
-        .padding(.top, 14)
+        .padding(.top, 12)
     }
     .padding(14)
     .frame(width: 320, alignment: .leading)
@@ -225,11 +228,12 @@ private struct LiveDot: View {
 
 // MARK: - Routes
 
-private struct RouteCard: View {
+private struct RouteRow: View {
   let route: Route
   let state: TunnelState
   let shortcut: Int?
   let locked: Bool
+  let lift: Namespace.ID
   let connect: () -> Void
 
   @State private var hovering = false
@@ -238,14 +242,9 @@ private struct RouteCard: View {
   var body: some View {
     Button(action: connect) {
       HStack(spacing: 10) {
-        Image(systemName: route.symbol)
-          .font(.system(size: 11, weight: .semibold))
-          .foregroundStyle(isActive ? Color.white : Brand.ink.opacity(0.7))
-          .frame(width: 26, height: 26)
-          .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-              .fill(isActive ? AnyShapeStyle(Brand.rose) : AnyShapeStyle(Brand.hairline))
-          )
+        IconTile(symbol: route.symbol, size: 26,
+                 fill: isActive ? Brand.rose : Brand.hairline,
+                 glyph: isActive ? .white : Brand.ink.opacity(0.7))
 
         VStack(alignment: .leading, spacing: 1) {
           Text(route.name)
@@ -263,21 +262,20 @@ private struct RouteCard: View {
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 6)
-      .background(
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .fill(isActive ? Brand.surface : Brand.chip)
-          .shadow(color: .black.opacity(isActive ? 0.08 : 0), radius: 10, y: 3)
-      )
-      .overlay(
-        // Hover is seen dozens of times a day, so it's the faintest change that still reads.
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .fill(Brand.ink.opacity(hovering && !isActive ? 0.04 : 0))
-          .animation(Motion.hover, value: hovering)
-      )
-      .overlay(
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .strokeBorder(isActive ? Brand.hairline : .clear, lineWidth: 1)
-      )
+      .background {
+        if isActive {
+          WellRow.shape
+            .fill(Brand.surface)
+            .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+            .overlay(WellRow.shape.strokeBorder(Brand.hairline, lineWidth: 1))
+            .matchedGeometryEffect(id: "lift", in: lift)
+        } else {
+          // Hover is seen dozens of times a day, so it's the faintest change that still reads.
+          WellRow.shape
+            .fill(Brand.ink.opacity(hovering ? 0.04 : 0))
+            .animation(Motion.hover, value: hovering)
+        }
+      }
       .animation(reduceMotion ? nil : Motion.standard, value: isActive)
     }
     .buttonStyle(PressableStyle())
@@ -354,7 +352,7 @@ private struct Tag: View {
   }
 }
 
-private struct AddCard: View {
+private struct AddRow: View {
   let action: () -> Void
   @State private var hovering = false
 
@@ -363,20 +361,17 @@ private struct AddCard: View {
       HStack(spacing: 10) {
         Image(systemName: "plus")
           .font(.system(size: 11, weight: .semibold))
-          .frame(width: 26, height: 22)
+          .frame(width: 26, height: 20)
         Text("Add VPN")
           .font(Typeface.body)
         Spacer()
         Text("⌘N").font(Typeface.mono).foregroundStyle(Brand.muted.opacity(0.7))
       }
       .foregroundStyle(hovering ? Brand.ink : Brand.muted)
-      .animation(Motion.hover, value: hovering)
       .padding(.horizontal, 8)
       .padding(.vertical, 5)
-      .background(
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-          .strokeBorder(Brand.hairline, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-      )
+      .background(WellRow.shape.fill(Brand.ink.opacity(hovering ? 0.04 : 0)))
+      .animation(Motion.hover, value: hovering)
     }
     .buttonStyle(PressableStyle())
     .onHover { hovering = $0 }
@@ -390,8 +385,9 @@ private struct DestinationList: View {
   let destinations: [DestinationStatus]
 
   var body: some View {
-    VStack(spacing: 0) {
-      ForEach(destinations) { destination in
+    Well {
+      ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
+        if index > 0 { WellDivider() }
         HStack {
           Text(destination.host)
             .lineLimit(1)
@@ -401,7 +397,8 @@ private struct DestinationList: View {
             .monospacedDigit()
         }
         .font(Typeface.mono)
-        .padding(.vertical, 3)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
       }
     }
   }
@@ -430,12 +427,13 @@ private struct Footer: View {
   var body: some View {
     HStack(spacing: 14) {
       Button { actions.setOpensAtLogin(!opensAtLogin) } label: {
-        HStack(spacing: 6) {
-          Image(systemName: opensAtLogin ? "checkmark.circle.fill" : "circle")
-            .foregroundStyle(opensAtLogin ? Brand.rose : Brand.muted)
+        HStack(spacing: 7) {
+          MiniSwitch(isOn: opensAtLogin)
           Text("Open at login")
         }
       }
+      .accessibilityAddTraits(.isToggle)
+      .accessibilityValue(opensAtLogin ? "On" : "Off")
       Spacer()
       Button("Log", action: actions.showLog)
         .keyboardShortcut("l")
@@ -445,6 +443,31 @@ private struct Footer: View {
     .buttonStyle(PressableStyle())
     .font(Typeface.caption)
     .foregroundStyle(Brand.muted)
+    .padding(.top, 12)
+    // The rule runs edge to edge, so the footer reads as the panel's floor, not another section.
+    .overlay(alignment: .top) {
+      Rectangle().fill(Brand.hairline).frame(height: 1).padding(.horizontal, -14)
+    }
+  }
+}
+
+/// A switch drawn in SwiftUI rather than AppKit, so it takes Peony's rose and renders in snapshots.
+private struct MiniSwitch: View {
+  let isOn: Bool
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    Capsule()
+      .fill(isOn ? AnyShapeStyle(Brand.rose) : AnyShapeStyle(Brand.ink.opacity(0.16)))
+      .frame(width: 22, height: 13)
+      .overlay(alignment: isOn ? .trailing : .leading) {
+        Circle()
+          .fill(.white)
+          .shadow(color: .black.opacity(0.18), radius: 1, y: 0.5)
+          .padding(1.5)
+      }
+      .animation(reduceMotion ? nil : Motion.standard, value: isOn)
+      .accessibilityHidden(true)
   }
 }
 
