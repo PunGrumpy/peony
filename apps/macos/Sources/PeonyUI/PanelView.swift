@@ -14,7 +14,7 @@ public struct PanelView: View {
   public var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
-        Wordmark(live: state.isLive)
+        Wordmark(connection: state.connection)
         Spacer()
         IconButton(symbol: "gearshape", help: "Settings", action: actions.openSettings)
           .keyboardShortcut(",")
@@ -38,10 +38,13 @@ public struct PanelView: View {
         }
 
         if state.isLive, !state.destinations.isEmpty {
-          SectionLabel(text: "Reachable")
-            .padding(.top, 14)
-            .padding(.bottom, 2)
-          DestinationList(destinations: state.destinations)
+          // The panel grows to fit at once, so only a fade is left to animate.
+          VStack(alignment: .leading, spacing: 2) {
+            SectionLabel(text: "Reachable")
+            DestinationList(destinations: state.destinations)
+          }
+          .padding(.top, 14)
+          .transition(.opacity.animation(.easeOut(duration: 0.2)))
         }
       }
 
@@ -59,13 +62,15 @@ public struct PanelView: View {
 
 // MARK: - Wordmark
 
-/// Symbol plus serif name.
+/// Symbol plus serif name. The mark follows the menu bar's: the inner ring blooms first,
+/// and the outer ring breathes until the tunnel is up.
 private struct Wordmark: View {
-  let live: Bool
+  let connection: TunnelState
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
     HStack(spacing: 7) {
-      PeonyMark(color: live ? Brand.rose : Brand.ink)
+      mark
         .frame(width: 17, height: 17)
       Text("Peony")
         .font(Typeface.display(17))
@@ -73,7 +78,24 @@ private struct Wordmark: View {
     }
     .accessibilityElement(children: .combine)
   }
+
+  @ViewBuilder private var mark: some View {
+    switch connection {
+    case .on:
+      PeonyMark(color: Brand.rose)
+    case .connecting where !reduceMotion:
+      // About once a second: fast enough to read as work, too slow to nag.
+      PhaseAnimator([0.35, 0.8]) { faint in
+        PeonyMark(filled: 1, color: Brand.ink, innerColor: Brand.rose, faint: faint)
+      } animation: { _ in .easeInOut(duration: 0.8) }
+    case .connecting:
+      PeonyMark(filled: 1, color: Brand.ink, innerColor: Brand.rose)
+    case .off, .disconnecting, .failed:
+      PeonyMark(color: Brand.ink)
+    }
+  }
 }
+
 
 // MARK: - Welcome
 
@@ -102,16 +124,22 @@ private struct Welcome: View {
 private struct Hero: View {
   let state: PanelState
   let actions: PanelActions
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 5) {
-      Text(headline)
-        .font(Typeface.display(21))
-        .tracking(Typeface.displayTracking(21))
-        .lineLimit(2)
-        .fixedSize(horizontal: false, vertical: true)
+    // Old and new share one spot, so a state change reads as the same hero changing its mind.
+    ZStack(alignment: .topLeading) {
+      VStack(alignment: .leading, spacing: 5) {
+        Text(headline)
+          .font(Typeface.display(21))
+          .tracking(Typeface.displayTracking(21))
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
 
-      detail
+        detail
+      }
+      .id(headline)
+      .transition(Motion.replace(reduceMotion: reduceMotion))
     }
     .frame(maxWidth: .infinity, alignment: .leading)
   }
@@ -123,7 +151,7 @@ private struct Hero: View {
     case .connecting: "Connecting to \(name)"
     case .disconnecting: "Disconnecting"
     case .on: "Connected to \(name)"
-    case .failed: "Couldn't reach \(name)"
+    case .failed: "Couldn't connect to \(name)"
     case .off: "Not connected"
     }
   }
@@ -163,7 +191,6 @@ private struct Hero: View {
             PillButton(title: "Try again", style: .primary, action: actions.retry)
               .keyboardShortcut(.defaultAction)
           }
-          PillButton(title: "Log", style: .quiet, action: actions.showLog)
         }
       }
     case .connecting:
@@ -245,13 +272,13 @@ private struct RouteCard: View {
         // Hover is seen dozens of times a day, so it's the faintest change that still reads.
         RoundedRectangle(cornerRadius: 10, style: .continuous)
           .fill(Brand.ink.opacity(hovering && !isActive ? 0.04 : 0))
-          .animation(.easeOut(duration: 0.12), value: hovering)
+          .animation(Motion.hover, value: hovering)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 10, style: .continuous)
           .strokeBorder(isActive ? Brand.hairline : .clear, lineWidth: 1)
       )
-      .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: isActive)
+      .animation(reduceMotion ? nil : Motion.standard, value: isActive)
     }
     .buttonStyle(PressableStyle())
     .disabled(locked || state.address != nil)
@@ -263,7 +290,23 @@ private struct RouteCard: View {
 
   private var isActive: Bool { state.wantsOn }
 
-  @ViewBuilder private var trailing: some View {
+  private var trailing: some View {
+    ZStack(alignment: .trailing) {
+      tag.id(tagKey).transition(Motion.replace(reduceMotion: reduceMotion))
+    }
+  }
+
+  private var tagKey: String {
+    switch state {
+    case .on: "on"
+    case .connecting: "connecting"
+    case .disconnecting: "disconnecting"
+    case .failed: "failed"
+    case .off: "off"
+    }
+  }
+
+  @ViewBuilder private var tag: some View {
     switch state {
     case .on: Tag(text: "Live", color: Brand.rose)
     case .connecting: Tag(text: "Joining", color: Brand.muted)
@@ -327,7 +370,7 @@ private struct AddCard: View {
         Text("⌘N").font(Typeface.mono).foregroundStyle(Brand.muted.opacity(0.7))
       }
       .foregroundStyle(hovering ? Brand.ink : Brand.muted)
-      .animation(.easeOut(duration: 0.12), value: hovering)
+      .animation(Motion.hover, value: hovering)
       .padding(.horizontal, 8)
       .padding(.vertical, 5)
       .background(
@@ -442,7 +485,7 @@ private struct IconButton: View {
         .foregroundStyle(hovering ? Brand.ink : Brand.muted)
         .frame(width: 24, height: 24)
         .background(Circle().fill(Brand.ink.opacity(hovering ? 0.06 : 0)))
-        .animation(.easeOut(duration: 0.12), value: hovering)
+        .animation(Motion.hover, value: hovering)
     }
     .buttonStyle(PressableStyle())
     .onHover { hovering = $0 }
