@@ -9,18 +9,29 @@ struct SettingsView: View {
 
   var body: some View {
     NavigationSplitView {
-      ScrollView {
-        SettingsSidebar(
-          top: [SidebarEntry(id: .general, title: "General", symbol: "gearshape.fill", tint: Brand.muted)],
-          sectionTitle: "VPNs",
-          items: model.store.profiles.map { profile in
-            SidebarEntry(id: .profile(profile.id), title: profile.name, symbol: Self.symbol(for: profile.kind),
-                         tint: Brand.rose,
-                         isLive: model.connection.profileID == profile.id && model.connection.state.address != nil)
-          },
-          bottom: [SidebarEntry(id: .new, title: "Add VPN", symbol: "plus", tint: Brand.hairline, glyph: Brand.ink)],
-          selection: $model.settingsSelection,
-          move: { model.store.move(from: $0, to: $1) })
+      List(selection: $model.settingsSelection) {
+        Label("General", systemImage: "gearshape")
+          .tag(SettingsSelection.general)
+        Section("VPNs") {
+          ForEach(model.store.profiles) { profile in
+            Label {
+              HStack {
+                Text(profile.name)
+                Spacer()
+                if model.connection.profileID == profile.id, model.connection.state.address != nil {
+                  Circle().fill(Brand.rose).frame(width: 6, height: 6)
+                    .accessibilityLabel("Connected")
+                }
+              }
+            } icon: {
+              Image(systemName: Self.symbol(for: profile.kind))
+            }
+            .tag(SettingsSelection.profile(profile.id))
+          }
+          .onMove { model.store.move(from: $0, to: $1) }
+          Label("Add VPN", systemImage: "plus")
+            .tag(SettingsSelection.new)
+        }
       }
       .navigationSplitViewColumnWidth(min: 180, ideal: 200)
     } detail: {
@@ -62,11 +73,6 @@ private struct GeneralSettings: View {
 
   var body: some View {
     Form {
-      Section {
-        SettingsHeader(symbol: "gearshape.fill", tint: Brand.muted, title: "General",
-                       subtitle: "Peony keeps one VPN on at a time, so routes and DNS never fight.")
-      }
-
       Section("Helper") {
         LabeledContent {
           switch model.helperStatus {
@@ -103,6 +109,8 @@ private struct GeneralSettings: View {
       }
     }
     .formStyle(.grouped)
+    .navigationTitle("General")
+    .navigationSubtitle("One VPN on at a time, so routes and DNS never fight")
     .onAppear { model.refreshHelperStatus() }
   }
 
@@ -217,16 +225,13 @@ private struct ProfileEditor: View {
 
   var body: some View {
     Form {
-      Section {
-        SettingsHeader(symbol: original == nil ? "plus" : choice.symbol, tint: original == nil ? Brand.ink : Brand.rose,
-                       glyph: original == nil ? Brand.paper : .white,
-                       title: original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name,
-                       subtitle: original == nil ? "Pick the kind of VPN, then fill in what your admin gave you." : choice.title)
-      }
-
       if original == nil {
-        Section("Kind") {
+        Section {
           KindPicker(choice: $choice)
+        } header: {
+          Text("Kind")
+        } footer: {
+          Text("Pick the kind of VPN, then fill in what your admin gave you.")
         }
       }
 
@@ -251,6 +256,8 @@ private struct ProfileEditor: View {
       }
     }
     .formStyle(.grouped)
+    .navigationTitle(original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name)
+    .navigationSubtitle(original == nil ? "" : choice.title)
     .toolbar {
       ToolbarItemGroup(placement: .primaryAction) {
         if original != nil {
