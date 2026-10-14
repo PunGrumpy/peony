@@ -86,7 +86,7 @@ private struct Welcome: View {
       Text("Add your first VPN")
         .font(Typeface.display(21))
         .tracking(Typeface.displayTracking(21))
-      Text("FortiGate, AnyConnect, GlobalProtect, WireGuard, NetBird or Tailscale. Peony keeps one on at a time and tells you when your servers are reachable.")
+      Text("FortiGate, AnyConnect, GlobalProtect, OpenVPN, WireGuard, NetBird or Tailscale. Peony keeps one on at a time and tells you when your servers are reachable.")
         .font(Typeface.body)
         .foregroundStyle(Brand.muted)
         .fixedSize(horizontal: false, vertical: true)

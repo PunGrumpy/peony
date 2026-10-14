@@ -20,19 +20,21 @@ final class ProfileStore {
     profiles.first { $0.id == id }
   }
 
-  func save(_ profile: Profile, secret: String?) {
+  func save(_ profile: Profile, secret: String?, openVPNPassword: String? = nil) {
     if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
       profiles[index] = profile
     } else {
       profiles.append(profile)
     }
     if let secret { Keychain.setSecret(secret, for: profile.id, label: "Peony: \(profile.name)") }
+    if let openVPNPassword { Keychain.setSecret(openVPNPassword, for: profile.id, .openVPNPassword, label: "Peony: \(profile.name) password") }
     write()
   }
 
   func delete(_ id: UUID) {
     profiles.removeAll { $0.id == id }
     Keychain.deleteSecret(for: id)
+    Keychain.deleteSecret(for: id, .openVPNPassword)
     write()
   }
 

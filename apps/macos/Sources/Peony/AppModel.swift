@@ -243,6 +243,7 @@ final class AppModel {
     case .forti: .forti
     case .openConnect: .openConnect
     case .wireGuard: .wireGuard
+    case .openVPN: .openVPN
     case .netBird: .netBird
     case .tailscale: .tailscale
     }

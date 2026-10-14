@@ -3,7 +3,7 @@
 // Installed to /Library/PrivilegedHelperTools/app.peony.helper (root:wheel 0755) with a sudoers
 // rule that lets the logged-in user run it without a password. Because any argument can reach it,
 // it trusts nothing: every value is validated in PeonyCore before it touches a config file or argv,
-// and it only executes tools from Homebrew's bin directories.
+// and it only executes tools from Homebrew's bin and sbin directories.
 //
 //   peony-helper version   prints Helper.version
 //   peony-helper run       reads one JSON HelperRequest from stdin and carries it out
@@ -38,8 +38,12 @@ func writePrivate(_ contents: String, name: String) -> String {
 }
 
 /// Runs a long-lived tunnel process, forwarding SIGINT/SIGTERM so the app can hang up cleanly,
-/// and exits with its status. `afterLaunch` runs once the child is up (used to delete secrets).
-func supervise(_ executable: String, _ arguments: [String], stdin: String? = nil, afterLaunch: @escaping @Sendable () -> Void = {}) -> Never {
+/// and exits with its status. `afterLaunch` runs once the child is up (used to delete secrets),
+/// and again when it exits, along with `afterExit`.
+func supervise(
+  _ executable: String, _ arguments: [String], stdin: String? = nil,
+  afterLaunch: @escaping @Sendable () -> Void = {}, afterExit: @escaping @Sendable () -> Void = {}
+) -> Never {
   let process = Process()
   process.executableURL = URL(filePath: executable)
   process.arguments = arguments
@@ -63,6 +67,7 @@ func supervise(_ executable: String, _ arguments: [String], stdin: String? = nil
   DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: afterLaunch)
   process.terminationHandler = { finished in
     afterLaunch()
+    afterExit()
     _ = sources
     exit(finished.terminationStatus)
   }
@@ -120,9 +125,33 @@ func handle(_ request: HelperRequest) -> Never {
     unlink(path)
     exit(status)
 
+  case .openVPN(let request):
+    let config: String
+    let auth: String?
+    do {
+      config = try OpenVPNConfig(validating: request.config).text
+      auth = try request.authFile()
+    } catch let error as OpenVPNConfig.Problem {
+      fail(error.description)
+    } catch let error as Validation.Failure {
+      fail(error.description)
+    } catch {
+      fail("\(error)")
+    }
+    let openvpn = tool("openvpn")
+    let configPath = writePrivate(config, name: "openvpn.conf")
+    var arguments = ["--config", configPath]
+    // openvpn reads its config once at startup. With --auth-nocache it forgets the password after
+    // each use and reads the auth file again to renegotiate or reconnect, so that file stays until it exits.
+    let authPath = auth.map { writePrivate($0, name: "openvpn.auth") }
+    if let authPath { arguments += ["--auth-user-pass", authPath] }
+    arguments.append("--auth-nocache")
+    supervise(openvpn, arguments, afterLaunch: { unlink(configPath) }, afterExit: { if let authPath { unlink(authPath) } })
+
   case .stop:
     _ = runToCompletion("/usr/bin/pkill", ["-INT", "-x", "openfortivpn"])
     _ = runToCompletion("/usr/bin/pkill", ["-INT", "-x", "openconnect"])
+    _ = runToCompletion("/usr/bin/pkill", ["-INT", "-x", "openvpn"])
     exit(0)
   }
 }

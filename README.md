@@ -8,7 +8,7 @@
 
 Peony switches between your VPNs and keeps only one on, so their routes and DNS never fight. Once a tunnel is up, it checks the hosts you care about, so "connected" means you can reach them.
 
-It works with FortiGate, AnyConnect, GlobalProtect, Pulse, F5, WireGuard, NetBird and Tailscale.
+It works with FortiGate, AnyConnect, GlobalProtect, Pulse, F5, OpenVPN, WireGuard, NetBird and Tailscale.
 
 ## Install
 
@@ -24,6 +24,7 @@ Peony drives the open-source clients, so install the ones your VPNs need:
 | --- | --- |
 | FortiGate SSL-VPN | `brew install openfortivpn` |
 | AnyConnect, GlobalProtect, Pulse, F5, Array | `brew install openconnect` |
+| OpenVPN | `brew install openvpn` |
 | WireGuard | `brew install wireguard-tools` |
 | Tailscale | `brew install --cask tailscale-app` or [Tailscale's Mac app](https://tailscale.com/download/mac) |
 | NetBird | [NetBird's installer](https://docs.netbird.io/how-to/installation) |
@@ -41,11 +42,11 @@ The first connection asks for an admin password once, to install the helper.
 Setting routes and DNS needs root. Peony installs a small helper and a sudoers rule that lets your account run it without a password. The helper:
 
 - takes one JSON request on stdin, never secrets in arguments;
-- validates every field, rejecting line breaks, option-like values and WireGuard `PostUp`/`PreDown` hooks;
-- only executes clients from Homebrew's `bin` directories;
-- writes configs to a root-only directory, and deletes FortiGate's as soon as it has been read.
+- validates every field, rejecting line breaks, option-like values, WireGuard `PostUp`/`PreDown` hooks, and any OpenVPN option that runs a script, loads a plugin or opens a file;
+- only executes clients from Homebrew's `bin` and `sbin` directories;
+- writes configs to a root-only directory, and deletes FortiGate's and OpenVPN's as soon as they have been read. OpenVPN's password file stays until the tunnel closes, because OpenVPN reads it again to renegotiate and reconnect.
 
-Passwords and WireGuard configs live in your Keychain. Remove everything with `brew uninstall --zap peony`.
+Passwords and WireGuard and OpenVPN configs live in your Keychain. Remove everything with `brew uninstall --zap peony`.
 
 ## Develop
 
