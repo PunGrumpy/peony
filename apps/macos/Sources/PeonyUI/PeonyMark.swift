@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// The rings strengthen from the centre out, which is how the menu bar shows a tunnel
 /// coming up: the inner ring first, the outer ring once it's on.
-public struct PeonyMark: View {
+public struct PeonyMark: View, Animatable {
   /// Inner ring, outer ring.
   public static let shapeCount = 2
 
@@ -16,11 +16,19 @@ public struct PeonyMark: View {
   public var color: Color
   /// The inner ring's colour, when it should differ.
   public var innerColor: Color?
+  /// How strong a faint ring is. Animatable, so the panel can let the outer ring breathe.
+  public var faint: Double
 
-  public init(filled: Int = PeonyMark.shapeCount, color: Color = .primary, innerColor: Color? = nil) {
+  public init(filled: Int = PeonyMark.shapeCount, color: Color = .primary, innerColor: Color? = nil, faint: Double = 0.35) {
     self.filled = filled
     self.color = color
     self.innerColor = innerColor
+    self.faint = faint
+  }
+
+  public var animatableData: Double {
+    get { faint }
+    set { faint = newValue }
   }
 
   public var body: some View {
@@ -31,7 +39,7 @@ public struct PeonyMark: View {
       for (index, ring) in [Self.inner, Self.outer].enumerated() {
         let tint = index == 0 ? (innerColor ?? color) : color
         // Faint rather than outlined: at 16pt an outline fills the petal and reads as solid.
-        context.fill(ring.applying(transform), with: .color(index < filled ? tint : tint.opacity(0.35)))
+        context.fill(ring.applying(transform), with: .color(index < filled ? tint : tint.opacity(faint)))
       }
     }
     .aspectRatio(1, contentMode: .fit)

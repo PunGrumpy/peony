@@ -8,9 +8,9 @@ public enum Brand {
   public static let ink = adaptive(light: 0x1C0D12, dark: 0xF2EFF0)
   public static let paper = adaptive(light: 0xFCFBFB, dark: 0x171415)
   /// Raised surfaces: the active route card.
-  public static let surface = adaptive(light: 0xFFFFFF, dark: 0x221E20)
-  /// Resting cards and chips: a warmed grey.
-  public static let chip = adaptive(light: 0xF0EDEE, dark: 0x1F1B1D)
+  public static let surface = adaptive(light: 0xFFFFFF, dark: 0x373134)
+  /// Resting cards and chips: a wash of ink, so it reads on the material in both modes.
+  public static let chip = adaptive(light: 0x1C0D12, dark: 0xFFFFFF, alpha: 0.055)
   public static let muted = adaptive(light: 0x8E8689, dark: 0x8A8285)
   public static let hairline = adaptive(light: 0x1C0D12, dark: 0xFFFFFF, alpha: 0.08)
   /// A muted peony rose, used only for "this is live".
@@ -49,6 +49,18 @@ public enum Typeface {
   /// SF Mono for addresses, durations and small labels.
   public static let mono = Font.system(size: 11.5, design: .monospaced)
   public static let label = Font.system(size: 10, weight: .medium, design: .monospaced)
+}
+
+/// One spring for every state change: critically damped, so nothing overshoots a panel
+/// that only changed because the tunnel did. Reduce Motion swaps movement for a fade.
+public enum Motion {
+  public static let standard = Animation.smooth(duration: 0.35)
+  public static let hover = Animation.easeOut(duration: 0.12)
+
+  /// The old content blurs out as the new blurs in, in the same spot.
+  static func replace(reduceMotion: Bool) -> AnyTransition {
+    reduceMotion ? .opacity.animation(.easeOut(duration: 0.2)) : AnyTransition(.blurReplace).animation(standard)
+  }
 }
 
 /// Feedback on press, not release. Scale alone: fading too would flicker the text.
