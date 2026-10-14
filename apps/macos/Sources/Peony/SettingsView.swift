@@ -10,15 +10,16 @@ struct SettingsView: View {
   var body: some View {
     NavigationSplitView {
       List(selection: $model.settingsSelection) {
-        Label("General", systemImage: "gearshape")
+        SidebarRow(title: "General", symbol: "gearshape.fill", tint: Brand.muted)
           .tag(SettingsSelection.general)
         Section("VPNs") {
           ForEach(model.store.profiles) { profile in
-            Label(profile.name, systemImage: Self.symbol(for: profile.kind))
+            SidebarRow(title: profile.name, symbol: Self.symbol(for: profile.kind), tint: Brand.rose,
+                       isLive: model.connection.profileID == profile.id && model.connection.state.address != nil)
               .tag(SettingsSelection.profile(profile.id))
           }
           .onMove { model.store.move(from: $0, to: $1) }
-          Label("Add VPN", systemImage: "plus")
+          SidebarRow(title: "Add VPN", symbol: "plus", tint: Brand.hairline, glyph: Brand.muted)
             .foregroundStyle(Brand.muted)
             .tag(SettingsSelection.new)
         }
@@ -56,6 +57,27 @@ struct SettingsView: View {
   }
 }
 
+/// A sidebar entry with its pane's icon tile. A live VPN gets a rose dot, so you can find it.
+private struct SidebarRow: View {
+  let title: String
+  let symbol: String
+  let tint: Color
+  var glyph: Color = .white
+  var isLive = false
+
+  var body: some View {
+    HStack(spacing: 8) {
+      IconTile(symbol: symbol, size: 20, fill: tint, glyph: glyph)
+      Text(title).lineLimit(1)
+      Spacer(minLength: 4)
+      if isLive {
+        Circle().fill(Brand.rose).frame(width: 6, height: 6)
+          .accessibilityLabel("Connected")
+      }
+    }
+  }
+}
+
 // MARK: - General
 
 private struct GeneralSettings: View {
@@ -64,7 +86,8 @@ private struct GeneralSettings: View {
   var body: some View {
     Form {
       Section {
-        PageTitle(title: "General", subtitle: "Peony keeps one VPN on at a time, so routes and DNS never fight.")
+        SettingsHeader(symbol: "gearshape.fill", tint: Brand.muted, title: "General",
+                       subtitle: "Peony keeps one VPN on at a time, so routes and DNS never fight.")
       }
 
       Section("Helper") {
@@ -133,22 +156,6 @@ private struct ToolRow: View {
       Text(name).font(.system(.body, design: .monospaced))
       Text(purpose)
     }
-  }
-}
-
-private struct PageTitle: View {
-  let title: String
-  let subtitle: String
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title)
-        .font(Typeface.display(26))
-        .tracking(Typeface.displayTracking(26))
-      Text(subtitle)
-        .foregroundStyle(Brand.muted)
-    }
-    .padding(.vertical, 4)
   }
 }
 
@@ -234,8 +241,10 @@ private struct ProfileEditor: View {
   var body: some View {
     Form {
       Section {
-        PageTitle(title: original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name,
-                  subtitle: original == nil ? "Pick the kind of VPN, then fill in what your admin gave you." : choice.title)
+        SettingsHeader(symbol: original == nil ? "plus" : choice.symbol, tint: original == nil ? Brand.ink : Brand.rose,
+                       glyph: original == nil ? Brand.paper : .white,
+                       title: original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name,
+                       subtitle: original == nil ? "Pick the kind of VPN, then fill in what your admin gave you." : choice.title)
       }
 
       if original == nil {
@@ -435,34 +444,35 @@ private struct ProfileEditor: View {
 
 private struct KindPicker: View {
   @Binding var choice: KindChoice
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    HStack(spacing: 8) {
+    // Three across, so every name fits on a line at the window's narrowest.
+    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
       ForEach(KindChoice.allCases) { kind in
+        let selected = choice == kind
         Button { choice = kind } label: {
-          VStack(spacing: 6) {
-            Image(systemName: kind.symbol)
-              .font(.system(size: 16, weight: .semibold))
-              .foregroundStyle(choice == kind ? Color.white : Brand.ink.opacity(0.7))
-              .frame(width: 34, height: 34)
-              .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(choice == kind ? AnyShapeStyle(Brand.rose) : AnyShapeStyle(Brand.hairline)))
+          HStack(spacing: 8) {
+            IconTile(symbol: kind.symbol, size: 26,
+                     fill: selected ? Brand.rose : Brand.hairline,
+                     glyph: selected ? .white : Brand.ink.opacity(0.7))
             Text(kind.title)
               .font(.callout)
-              .lineLimit(2)
-              .multilineTextAlignment(.center)
-              .frame(maxHeight: .infinity, alignment: .top)
+              .lineLimit(1)
+              .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
           }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 10)
+          .padding(6)
           .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(choice == kind ? Brand.surface : Brand.chip))
+            .fill(selected ? Brand.surface : Brand.chip)
+            .shadow(color: .black.opacity(selected ? 0.08 : 0), radius: 6, y: 2))
           .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .strokeBorder(choice == kind ? Brand.rose.opacity(0.5) : .clear, lineWidth: 1))
+            .strokeBorder(selected ? Brand.rose.opacity(0.5) : .clear, lineWidth: 1))
+          .animation(reduceMotion ? nil : Motion.standard, value: selected)
         }
         .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(selected ? .isSelected : [])
       }
     }
-    .fixedSize(horizontal: false, vertical: true)
   }
 }
