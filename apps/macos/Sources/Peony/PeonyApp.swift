@@ -6,6 +6,13 @@ import SwiftUI
 struct PeonyApp: App {
   @NSApplicationDelegateAdaptor private var delegate: AppDelegate
 
+  init() {
+    // Peony's accent, for sidebars, switches and default buttons. An asset catalog's AccentColor
+    // would do this, but compiling one needs Xcode. Registered, not set, so an accent the user
+    // picked in System Settings still wins. 6 is the system's pink, the nearest to Peony's rose.
+    UserDefaults.standard.register(defaults: ["AppleAccentColor": 6])
+  }
+
   var body: some Scene {
     MenuBarExtra {
       Panel(model: delegate.model)
@@ -18,6 +25,7 @@ struct PeonyApp: App {
     Window("Peony Settings", id: "settings") {
       SettingsView(model: delegate.model)
     }
+    .windowToolbarStyle(.unified)
     .windowResizability(.contentMinSize)
     .defaultSize(width: 760, height: 540)
 
