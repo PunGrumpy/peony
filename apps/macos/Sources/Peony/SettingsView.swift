@@ -263,10 +263,17 @@ private struct ProfileEditor: View {
     .navigationTitle(original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name)
     .navigationSubtitle(original == nil ? "" : choice.title)
     .toolbar {
-      ToolbarItemGroup(placement: .primaryAction) {
-        if original != nil {
-          Button("Delete", role: .destructive) { confirmingDelete = true }
+      // Delete is a quiet icon in its own group, away from Save, so the two can't be mistaken.
+      if original != nil {
+        ToolbarItem(placement: .primaryAction) {
+          Button("Delete", systemImage: "trash", role: .destructive) { confirmingDelete = true }
+            .help("Delete this VPN")
         }
+        if #available(macOS 26, *) {
+          ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
+      }
+      ToolbarItem(placement: .primaryAction) {
         Button("Save", action: save)
           .keyboardShortcut("s")
           .buttonStyle(.borderedProminent)
