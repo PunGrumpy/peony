@@ -1,11 +1,23 @@
 import SwiftUI
 
+/// One line of a tunnel tool's output. The id stays with the line when older lines are
+/// dropped, so trimming the log doesn't make every row look new.
+public struct LogLine: Identifiable, Equatable, Sendable {
+  public let id: Int
+  public let text: String
+
+  public init(id: Int, text: String) {
+    self.id = id
+    self.text = text
+  }
+}
+
 /// openfortivpn's output, newest at the bottom.
 public struct LogView: View {
   public static let windowID = "forti-log"
-  let lines: [String]
+  let lines: [LogLine]
 
-  public init(lines: [String]) {
+  public init(lines: [LogLine]) {
     self.lines = lines
   }
 
@@ -13,12 +25,11 @@ public struct LogView: View {
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 2) {
-          ForEach(lines.indices, id: \.self) { index in
-            Text(lines[index])
+          ForEach(lines) { line in
+            Text(line.text)
               .font(Typeface.mono)
               .textSelection(.enabled)
               .frame(maxWidth: .infinity, alignment: .leading)
-              .id(index)
           }
         }
         .padding(14)
@@ -35,8 +46,9 @@ public struct LogView: View {
           }
         }
       }
-      .onChange(of: lines.count) {
-        proxy.scrollTo(lines.count - 1, anchor: .bottom)
+      // The newest id, not the count: the count stops changing once the log is full.
+      .onChange(of: lines.last?.id) { _, newest in
+        if let newest { proxy.scrollTo(newest, anchor: .bottom) }
       }
     }
     .frame(minWidth: 480, minHeight: 280)

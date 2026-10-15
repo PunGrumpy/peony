@@ -18,11 +18,13 @@ final class AppModel {
   var settingsSelection: SettingsSelection? = .general
   /// Bumped to ask the settings window to come forward.
   private(set) var settingsRequest = 0
-  private(set) var helperStatus = HelperInstaller.status
+  private(set) var helperStatus = HelperInstaller.Status.missing
   private(set) var notice: String?
 
   @ObservationIgnored private var lastSnapshot: InterfaceSnapshot?
   @ObservationIgnored private var probeTask: Task<Void, Never>?
+  @ObservationIgnored private var interfaceCheck: Task<Void, Never>?
+  @ObservationIgnored private var interfaceWatcher: InterfaceWatcher?
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "app")
 
   init() {
@@ -33,12 +35,8 @@ final class AppModel {
         startProbing(profile)
       }
     }
-    Task { [weak self] in
-      while !Task.isCancelled {
-        await self?.checkInterfaces()
-        try? await Task.sleep(for: .seconds(2), tolerance: .seconds(1))
-      }
-    }
+    refreshHelperStatus()
+    interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
   }
 
   // MARK: Panel
@@ -118,7 +116,7 @@ final class AppModel {
     case .installHelper:
       do {
         try HelperInstaller.install()
-        helperStatus = HelperInstaller.status
+        refreshHelperStatus()
         if let id = connection.profileID { connect(id) }
       } catch {
         logger.error("Helper install failed: \(error.localizedDescription, privacy: .public)")
@@ -164,7 +162,7 @@ final class AppModel {
   // MARK: Settings
 
   func refreshHelperStatus() {
-    helperStatus = HelperInstaller.status
+    Task { helperStatus = await HelperInstaller.status() }
   }
 
   func installHelper() {
@@ -174,7 +172,7 @@ final class AppModel {
     } catch {
       notice = error.localizedDescription
     }
-    helperStatus = HelperInstaller.status
+    refreshHelperStatus()
   }
 
   func uninstallHelper() {
@@ -184,7 +182,7 @@ final class AppModel {
     } catch {
       notice = error.localizedDescription
     }
-    helperStatus = HelperInstaller.status
+    refreshHelperStatus()
   }
 
   func setOpensAtLogin(_ enabled: Bool) {
@@ -198,6 +196,16 @@ final class AppModel {
   }
 
   // MARK: Background work
+
+  /// A tunnel coming up changes several keys in a burst; this checks once when it settles,
+  /// so a daemon's status command isn't run for each.
+  private func interfacesMayHaveChanged() {
+    interfaceCheck?.cancel()
+    interfaceCheck = Task { [weak self] in
+      guard (try? await Task.sleep(for: .milliseconds(500))) != nil else { return }
+      await self?.checkInterfaces()
+    }
+  }
 
   private func checkInterfaces() async {
     let snapshot = InterfaceSnapshot.current()
@@ -227,7 +235,8 @@ final class AppModel {
           let ms = results[index] ?? nil
           return DestinationStatus(host: target.host, reachability: ms.map { .reachable(milliseconds: $0) } ?? .unreachable)
         }
-        try? await Task.sleep(for: .seconds(30))
+        // Tolerance lets macOS fold this wakeup in with others, which matters on battery.
+        try? await Task.sleep(for: .seconds(30), tolerance: .seconds(10))
       }
     }
   }

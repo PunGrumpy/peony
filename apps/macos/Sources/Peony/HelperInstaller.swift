@@ -11,13 +11,14 @@ enum HelperInstaller {
     case missing
   }
 
-  static var status: Status {
+  /// Asks the installed helper its version, which runs a process, so it's async.
+  static func status() async -> Status {
     guard FileManager.default.fileExists(atPath: Helper.sudoersPath),
           FileManager.default.isExecutableFile(atPath: Helper.installedPath)
     else { return .missing }
     // `version` is the one command the helper answers without root.
-    let output = run(Helper.installedPath, ["version"]).trimmingCharacters(in: .whitespacesAndNewlines)
-    return output == Helper.version ? .installed : .outdated
+    let output = (try? await Command.run(Helper.installedPath, "version"))?.text ?? ""
+    return output.trimmingCharacters(in: .whitespacesAndNewlines) == Helper.version ? .installed : .outdated
   }
 
   static var bundledHelper: String? {
@@ -66,16 +67,4 @@ enum HelperInstaller {
     }
   }
 
-  private static func run(_ path: String, _ arguments: [String]) -> String {
-    let process = Process()
-    process.executableURL = URL(filePath: path)
-    process.arguments = arguments
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = Pipe()
-    guard (try? process.run()) != nil else { return "" }
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    return String(decoding: data, as: UTF8.self)
-  }
 }

@@ -12,13 +12,16 @@ final class Connection {
   private(set) var state: TunnelState = .off
   private(set) var since: Date?
   /// The tunnel tool's output, for the log window.
-  private(set) var log: [String] = []
+  private(set) var log: [LogLine] = []
 
   @ObservationIgnored private var process: Process?
   @ObservationIgnored private var kind: Profile.Kind?
   @ObservationIgnored private var before = InterfaceSnapshot(ipv4: [:])
   @ObservationIgnored private var failure: TunnelFailure?
+  /// Bumped by each connect, so one that was superseded while suspended can tell.
+  @ObservationIgnored private var attempt = 0
   @ObservationIgnored private var pendingText = ""
+  @ObservationIgnored private var nextLogID = 0
   @ObservationIgnored private var fortiParser = FortiLogParser()
   @ObservationIgnored private var openVPNParser = OpenVPNLogParser()
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "connection")
@@ -29,6 +32,8 @@ final class Connection {
     if profileID != nil, state != .off {
       await disconnect()
     }
+    attempt += 1
+    let current = attempt
     profileID = profile.id
     kind = profile.kind
     UserDefaults.standard.set(profile.id.uuidString, forKey: Self.lastProfileKey)
@@ -41,7 +46,10 @@ final class Connection {
     openVPNParser = OpenVPNLogParser()
     before = InterfaceSnapshot.current()
 
-    if let problem = preflight(profile) {
+    let problem = await preflight(profile)
+    // The user may have picked another VPN, or cancelled, while preflight ran.
+    guard attempt == current, state == .connecting else { return }
+    if let problem {
       state = .failed(problem)
       return
     }
@@ -126,7 +134,7 @@ final class Connection {
   }
 
   /// Catches what would otherwise fail deep inside a root process, with a fix the user can act on.
-  private func preflight(_ profile: Profile) -> TunnelFailure? {
+  private func preflight(_ profile: Profile) async -> TunnelFailure? {
     let tool: (name: String, install: String) = switch profile.kind {
     case .forti: ("openfortivpn", "brew install openfortivpn")
     case .openConnect: ("openconnect", "brew install openconnect")
@@ -141,7 +149,7 @@ final class Connection {
         fix: .installTool(name: tool.name, command: tool.install))
     }
     if profile.kind.daemon != nil { return nil }
-    if HelperInstaller.status != .installed {
+    if await HelperInstaller.status() != .installed {
       return TunnelFailure(
         message: "Peony needs a one-time admin approval to set up routes and DNS for VPNs.",
         fix: .installHelper)
@@ -333,10 +341,7 @@ final class Connection {
     pendingText += text
     var lines = pendingText.components(separatedBy: "\n")
     pendingText = lines.removeLast()
-    for line in lines where !line.isEmpty {
-      appendLine(line)
-      if let event = parse(line) { handle(event) }
-    }
+    appendLog(lines)
   }
 
   private func parse(_ line: String) -> TunnelEvent? {
@@ -396,14 +401,16 @@ final class Connection {
   }
 
   private func appendLog(_ text: String) {
-    for line in text.components(separatedBy: "\n") where !line.isEmpty {
-      appendLine(line)
-      if let event = parse(line) { handle(event) }
-    }
+    appendLog(text.components(separatedBy: "\n"))
   }
 
-  private func appendLine(_ line: String) {
-    log.append(line)
+  private func appendLog(_ lines: [String]) {
+    for line in lines where !line.isEmpty {
+      log.append(LogLine(id: nextLogID, text: line))
+      nextLogID += 1
+      if let event = parse(line) { handle(event) }
+    }
+    // Trimmed once per chunk rather than per line.
     if log.count > 500 { log.removeFirst(log.count - 500) }
   }
 
