@@ -18,7 +18,7 @@ final class AppModel {
   var settingsSelection: SettingsSelection? = .general
   /// Bumped to ask the settings window to come forward.
   private(set) var settingsRequest = 0
-  private(set) var helperStatus = HelperInstaller.status
+  private(set) var helperStatus = HelperInstaller.Status.missing
   private(set) var notice: String?
 
   @ObservationIgnored private var lastSnapshot: InterfaceSnapshot?
@@ -35,6 +35,7 @@ final class AppModel {
         startProbing(profile)
       }
     }
+    refreshHelperStatus()
     interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
   }
 
@@ -115,7 +116,7 @@ final class AppModel {
     case .installHelper:
       do {
         try HelperInstaller.install()
-        helperStatus = HelperInstaller.status
+        refreshHelperStatus()
         if let id = connection.profileID { connect(id) }
       } catch {
         logger.error("Helper install failed: \(error.localizedDescription, privacy: .public)")
@@ -161,7 +162,7 @@ final class AppModel {
   // MARK: Settings
 
   func refreshHelperStatus() {
-    helperStatus = HelperInstaller.status
+    Task { helperStatus = await HelperInstaller.status() }
   }
 
   func installHelper() {
@@ -171,7 +172,7 @@ final class AppModel {
     } catch {
       notice = error.localizedDescription
     }
-    helperStatus = HelperInstaller.status
+    refreshHelperStatus()
   }
 
   func uninstallHelper() {
@@ -181,7 +182,7 @@ final class AppModel {
     } catch {
       notice = error.localizedDescription
     }
-    helperStatus = HelperInstaller.status
+    refreshHelperStatus()
   }
 
   func setOpensAtLogin(_ enabled: Bool) {

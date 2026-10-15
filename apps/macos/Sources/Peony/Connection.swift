@@ -18,6 +18,8 @@ final class Connection {
   @ObservationIgnored private var kind: Profile.Kind?
   @ObservationIgnored private var before = InterfaceSnapshot(ipv4: [:])
   @ObservationIgnored private var failure: TunnelFailure?
+  /// Bumped by each connect, so one that was superseded while suspended can tell.
+  @ObservationIgnored private var attempt = 0
   @ObservationIgnored private var pendingText = ""
   @ObservationIgnored private var fortiParser = FortiLogParser()
   @ObservationIgnored private var openVPNParser = OpenVPNLogParser()
@@ -29,6 +31,8 @@ final class Connection {
     if profileID != nil, state != .off {
       await disconnect()
     }
+    attempt += 1
+    let current = attempt
     profileID = profile.id
     kind = profile.kind
     UserDefaults.standard.set(profile.id.uuidString, forKey: Self.lastProfileKey)
@@ -41,7 +45,10 @@ final class Connection {
     openVPNParser = OpenVPNLogParser()
     before = InterfaceSnapshot.current()
 
-    if let problem = preflight(profile) {
+    let problem = await preflight(profile)
+    // The user may have picked another VPN, or cancelled, while preflight ran.
+    guard attempt == current, state == .connecting else { return }
+    if let problem {
       state = .failed(problem)
       return
     }
@@ -126,7 +133,7 @@ final class Connection {
   }
 
   /// Catches what would otherwise fail deep inside a root process, with a fix the user can act on.
-  private func preflight(_ profile: Profile) -> TunnelFailure? {
+  private func preflight(_ profile: Profile) async -> TunnelFailure? {
     let tool: (name: String, install: String) = switch profile.kind {
     case .forti: ("openfortivpn", "brew install openfortivpn")
     case .openConnect: ("openconnect", "brew install openconnect")
@@ -141,7 +148,7 @@ final class Connection {
         fix: .installTool(name: tool.name, command: tool.install))
     }
     if profile.kind.daemon != nil { return nil }
-    if HelperInstaller.status != .installed {
+    if await HelperInstaller.status() != .installed {
       return TunnelFailure(
         message: "Peony needs a one-time admin approval to set up routes and DNS for VPNs.",
         fix: .installHelper)
