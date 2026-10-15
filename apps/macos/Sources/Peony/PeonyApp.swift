@@ -25,6 +25,7 @@ struct PeonyApp: App {
     Window("Peony Settings", id: "settings") {
       SettingsView(model: delegate.model)
     }
+    .windowToolbarStyle(.unified)
     .windowResizability(.contentMinSize)
     .defaultSize(width: 760, height: 540)
 

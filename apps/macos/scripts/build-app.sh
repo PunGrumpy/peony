@@ -18,6 +18,11 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
 cp "$BIN/Peony" "$APP/Contents/MacOS/Peony"
 cp "$BIN/peony-helper" "$APP/Contents/Helpers/peony-helper"
+# Outside Xcode, SwiftPM records the deployment target as the SDK. macOS reads that number to
+# pick the look, so Peony would get the old window chrome. Record the SDK it was built with.
+MINOS="$(vtool -arch arm64 -show-build "$APP/Contents/MacOS/Peony" | awk '/minos/ { print $2; exit }')"
+SDK_VERSION="$(xcrun --sdk "$SDKROOT" --show-sdk-version)"
+vtool -set-build-version macos "$MINOS" "$SDK_VERSION" -replace -output "$APP/Contents/MacOS/Peony" "$APP/Contents/MacOS/Peony"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$(git rev-list --count HEAD 2>/dev/null || echo 1)" "$APP/Contents/Info.plist"
