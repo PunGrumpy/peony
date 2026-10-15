@@ -234,7 +234,8 @@ final class AppModel {
           let ms = results[index] ?? nil
           return DestinationStatus(host: target.host, reachability: ms.map { .reachable(milliseconds: $0) } ?? .unreachable)
         }
-        try? await Task.sleep(for: .seconds(30))
+        // Tolerance lets macOS fold this wakeup in with others, which matters on battery.
+        try? await Task.sleep(for: .seconds(30), tolerance: .seconds(10))
       }
     }
   }
