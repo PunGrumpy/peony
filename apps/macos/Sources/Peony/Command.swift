@@ -13,8 +13,8 @@ nonisolated enum Command {
     try await run(executable, arguments: arguments)
   }
 
-  /// Output is drained while the process runs, so a chatty command can't fill
-  /// the pipe buffer and deadlock waiting for a reader.
+  /// Waits on the process and its output asynchronously, so a slow command never holds
+  /// a thread of the concurrency pool, and a chatty one can't fill the pipe and deadlock.
   @concurrent
   static func run(_ executable: String, arguments: [String], input: Data? = nil) async throws -> Result {
     let process = Process()
@@ -25,14 +25,22 @@ nonisolated enum Command {
     process.standardError = pipe
     let stdin = Pipe()
     if input != nil { process.standardInput = stdin }
+    let exit = AsyncStream<Int32> { continuation in
+      process.terminationHandler = { finished in
+        continuation.yield(finished.terminationStatus)
+        continuation.finish()
+      }
+    }
 
     try process.run()
     if let input {
       stdin.fileHandleForWriting.write(input)
       try? stdin.fileHandleForWriting.close()
     }
-    let output = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    return Result(status: process.terminationStatus, output: output)
+    var output = Data()
+    for try await byte in pipe.fileHandleForReading.bytes { output.append(byte) }
+    var status: Int32 = -1
+    for await code in exit { status = code }
+    return Result(status: status, output: output)
   }
 }
