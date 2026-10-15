@@ -23,6 +23,8 @@ final class AppModel {
 
   @ObservationIgnored private var lastSnapshot: InterfaceSnapshot?
   @ObservationIgnored private var probeTask: Task<Void, Never>?
+  @ObservationIgnored private var interfaceCheck: Task<Void, Never>?
+  @ObservationIgnored private var interfaceWatcher: InterfaceWatcher?
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "app")
 
   init() {
@@ -33,12 +35,7 @@ final class AppModel {
         startProbing(profile)
       }
     }
-    Task { [weak self] in
-      while !Task.isCancelled {
-        await self?.checkInterfaces()
-        try? await Task.sleep(for: .seconds(2), tolerance: .seconds(1))
-      }
-    }
+    interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
   }
 
   // MARK: Panel
@@ -198,6 +195,16 @@ final class AppModel {
   }
 
   // MARK: Background work
+
+  /// A tunnel coming up changes several keys in a burst; this checks once when it settles,
+  /// so a daemon's status command isn't run for each.
+  private func interfacesMayHaveChanged() {
+    interfaceCheck?.cancel()
+    interfaceCheck = Task { [weak self] in
+      guard (try? await Task.sleep(for: .milliseconds(500))) != nil else { return }
+      await self?.checkInterfaces()
+    }
+  }
 
   private func checkInterfaces() async {
     let snapshot = InterfaceSnapshot.current()

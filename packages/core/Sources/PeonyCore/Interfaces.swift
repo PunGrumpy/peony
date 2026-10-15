@@ -2,9 +2,8 @@ import Darwin
 
 /// A snapshot of every interface's IPv4 address, keyed by interface name.
 ///
-/// Reading it is a single `getifaddrs` call with no process spawn, which is why
-/// Peony can afford to check it every couple of seconds to notice tunnels
-/// coming and going.
+/// Reading it is a single `getifaddrs` call with no process spawn, so Peony
+/// reads it whenever macOS reports an interface change.
 public struct InterfaceSnapshot: Equatable, Sendable {
   public var ipv4: [String: String]
 
