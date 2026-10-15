@@ -14,10 +14,20 @@ struct SettingsView: View {
           .tag(SettingsSelection.general)
         Section("VPNs") {
           ForEach(model.store.profiles) { profile in
-            Label(profile.name, systemImage: Self.symbol(for: profile.kind))
-              // Words, not a coloured dot, so it doesn't rely on colour alone.
-              .badge(model.connection.profileID == profile.id && model.connection.state.address != nil
-                     ? Text("Connected") : nil)
+            Label {
+              HStack {
+                Text(profile.name)
+                Spacer()
+                // Only the live VPN has a dot, so it reads without its colour too.
+                if model.connection.profileID == profile.id, model.connection.state.address != nil {
+                  Circle().fill(Brand.rose).frame(width: 6, height: 6)
+                    .help("Connected")
+                    .accessibilityLabel("Connected")
+                }
+              }
+            } icon: {
+              Image(systemName: Self.symbol(for: profile.kind))
+            }
               .tag(SettingsSelection.profile(profile.id))
           }
           .onMove { model.store.move(from: $0, to: $1) }
