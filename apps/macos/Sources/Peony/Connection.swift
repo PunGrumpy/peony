@@ -12,7 +12,7 @@ final class Connection {
   private(set) var state: TunnelState = .off
   private(set) var since: Date?
   /// The tunnel tool's output, for the log window.
-  private(set) var log: [String] = []
+  private(set) var log: [LogLine] = []
 
   @ObservationIgnored private var process: Process?
   @ObservationIgnored private var kind: Profile.Kind?
@@ -21,6 +21,7 @@ final class Connection {
   /// Bumped by each connect, so one that was superseded while suspended can tell.
   @ObservationIgnored private var attempt = 0
   @ObservationIgnored private var pendingText = ""
+  @ObservationIgnored private var nextLogID = 0
   @ObservationIgnored private var fortiParser = FortiLogParser()
   @ObservationIgnored private var openVPNParser = OpenVPNLogParser()
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "connection")
@@ -340,10 +341,7 @@ final class Connection {
     pendingText += text
     var lines = pendingText.components(separatedBy: "\n")
     pendingText = lines.removeLast()
-    for line in lines where !line.isEmpty {
-      appendLine(line)
-      if let event = parse(line) { handle(event) }
-    }
+    appendLog(lines)
   }
 
   private func parse(_ line: String) -> TunnelEvent? {
@@ -403,14 +401,16 @@ final class Connection {
   }
 
   private func appendLog(_ text: String) {
-    for line in text.components(separatedBy: "\n") where !line.isEmpty {
-      appendLine(line)
-      if let event = parse(line) { handle(event) }
-    }
+    appendLog(text.components(separatedBy: "\n"))
   }
 
-  private func appendLine(_ line: String) {
-    log.append(line)
+  private func appendLog(_ lines: [String]) {
+    for line in lines where !line.isEmpty {
+      log.append(LogLine(id: nextLogID, text: line))
+      nextLogID += 1
+      if let event = parse(line) { handle(event) }
+    }
+    // Trimmed once per chunk rather than per line.
     if log.count > 500 { log.removeFirst(log.count - 500) }
   }
 
