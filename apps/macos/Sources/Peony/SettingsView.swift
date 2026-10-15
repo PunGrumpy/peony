@@ -14,19 +14,11 @@ struct SettingsView: View {
           .tag(SettingsSelection.general)
         Section("VPNs") {
           ForEach(model.store.profiles) { profile in
-            Label {
-              HStack {
-                Text(profile.name)
-                Spacer()
-                if model.connection.profileID == profile.id, model.connection.state.address != nil {
-                  Circle().fill(Brand.rose).frame(width: 6, height: 6)
-                    .accessibilityLabel("Connected")
-                }
-              }
-            } icon: {
-              Image(systemName: Self.symbol(for: profile.kind))
-            }
-            .tag(SettingsSelection.profile(profile.id))
+            Label(profile.name, systemImage: Self.symbol(for: profile.kind))
+              // Words, not a coloured dot, so it doesn't rely on colour alone.
+              .badge(model.connection.profileID == profile.id && model.connection.state.address != nil
+                     ? Text("Connected") : nil)
+              .tag(SettingsSelection.profile(profile.id))
           }
           .onMove { model.store.move(from: $0, to: $1) }
           Label("Add VPN", systemImage: "plus")
@@ -227,9 +219,11 @@ private struct ProfileEditor: View {
     Form {
       if original == nil {
         Section {
-          KindPicker(choice: $choice)
-        } header: {
-          Text("Kind")
+          Picker("Kind", selection: $choice) {
+            ForEach(KindChoice.allCases) { kind in
+              Label(kind.title, systemImage: kind.symbol).tag(kind)
+            }
+          }
         } footer: {
           Text("Pick the kind of VPN, then fill in what your admin gave you.")
         }
@@ -423,40 +417,5 @@ private struct ProfileEditor: View {
       throw Validation.Failure.invalid(field: "Reachable", reason: "\(host) isn't host or host:port")
     }
     return Profile(id: original?.id ?? UUID(), name: trimmedName, kind: kind, destinations: hosts)
-  }
-}
-
-private struct KindPicker: View {
-  @Binding var choice: KindChoice
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  var body: some View {
-    // Three across, so every name fits on a line at the window's narrowest.
-    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-      ForEach(KindChoice.allCases) { kind in
-        let selected = choice == kind
-        Button { choice = kind } label: {
-          HStack(spacing: 8) {
-            IconTile(symbol: kind.symbol, size: 26,
-                     fill: selected ? Brand.rose : Brand.hairline,
-                     glyph: selected ? .white : Brand.ink.opacity(0.7))
-            Text(kind.title)
-              .font(.callout)
-              .lineLimit(1)
-              .minimumScaleFactor(0.85)
-            Spacer(minLength: 0)
-          }
-          .padding(6)
-          .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(selected ? Brand.surface : Brand.chip)
-            .shadow(color: .black.opacity(selected ? 0.08 : 0), radius: 6, y: 2))
-          .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .strokeBorder(selected ? Brand.rose.opacity(0.5) : .clear, lineWidth: 1))
-          .animation(reduceMotion ? nil : Motion.standard, value: selected)
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityAddTraits(selected ? .isSelected : [])
-      }
-    }
   }
 }
