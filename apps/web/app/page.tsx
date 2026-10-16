@@ -91,15 +91,17 @@ const Page = () => (
 
     <section
       aria-label="Works with"
-      className="border-gray-400 flex flex-col gap-5 border-b px-6 py-8 sm:px-10 lg:flex-row lg:items-center lg:justify-between"
+      className="border-gray-400 border-b px-6 py-8 sm:px-10"
     >
-      <Label>Works with</Label>
-      <ul className="text-gray-1000 flex flex-wrap gap-x-8 gap-y-4 text-[15px] font-medium tracking-[-0.01em]">
+      <ul className="text-gray-900 grid grid-cols-2 gap-x-4 gap-y-2 text-[14px] font-medium tracking-[-0.01em] whitespace-nowrap sm:grid-cols-3 xl:grid-cols-9 xl:gap-x-0">
         {vpns.map((vpn) => (
-          <li key={vpn.id} className="flex items-center gap-2">
+          <li
+            key={vpn.id}
+            className="flex h-11 items-center justify-center gap-1.5 max-sm:last:col-span-2"
+          >
             <VpnLogo
               id={vpn.id}
-              className={"wide" in vpn ? "h-4 w-11" : "size-5"}
+              className={"wide" in vpn ? "h-4 w-11" : "size-[18px]"}
             />
             {vpn.name}
           </li>
