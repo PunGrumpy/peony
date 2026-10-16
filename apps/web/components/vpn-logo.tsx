@@ -1,12 +1,15 @@
 import { cn } from "cn";
+import type { CSSProperties } from "react";
 
 // Drawn as a mask so every logo takes the text colour, in both themes.
 export const VpnLogo = ({
   id,
   className,
+  style,
 }: {
   id: string;
   className?: string;
+  style?: CSSProperties;
 }) => (
   <span
     aria-hidden="true"
@@ -15,6 +18,7 @@ export const VpnLogo = ({
       className
     )}
     style={{
+      ...style,
       WebkitMaskImage: `url(/vpns/${id}.svg)`,
       maskImage: `url(/vpns/${id}.svg)`,
     }}

@@ -30,11 +30,14 @@ const Page = () => (
 
     <LegalSection title="VPN logos">
       <p>
-        The Fortinet, Cisco, Palo Alto Networks, F5, OpenVPN, WireGuard, and Tailscale
-        logos come from <a href="https://simpleicons.org">Simple Icons</a>,
-        released under CC0 1.0. The NetBird logo comes from{" "}
-        <a href="https://selfh.st/icons/">selfh.st/icons</a> and the Ivanti logo
-        from{" "}
+        The Fortinet, Cisco, Palo Alto Networks, OpenVPN, WireGuard, and
+        Tailscale wordmarks come from{" "}
+        <a href="https://commons.wikimedia.org">Wikimedia Commons</a>, where
+        they are in the public domain. The F5 logo comes from{" "}
+        <a href="https://simpleicons.org">Simple Icons</a>, released under CC0
+        1.0. The NetBird wordmark comes from{" "}
+        <a href="https://github.com/netbirdio/netbird">NetBird’s repository</a>{" "}
+        and the Ivanti logo from{" "}
         <a href="https://github.com/homarr-labs/dashboard-icons">
           Dashboard Icons
         </a>
