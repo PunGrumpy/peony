@@ -21,17 +21,18 @@ export const site = {
   version: app.version,
 };
 
-// Pulse ships as Ivanti's wordmark, so its logo runs wide.
+// Each logo is its vendor's wordmark. Width is set per logo so a wide
+// wordmark and a compact one carry about the same weight.
 export const vpns = [
-  { id: "fortigate", name: "FortiGate" },
-  { id: "anyconnect", name: "AnyConnect" },
-  { id: "globalprotect", name: "GlobalProtect" },
-  { id: "pulse", name: "Pulse", wide: true },
-  { id: "f5", name: "F5" },
-  { id: "openvpn", name: "OpenVPN" },
-  { id: "wireguard", name: "WireGuard" },
-  { id: "netbird", name: "NetBird" },
-  { id: "tailscale", name: "Tailscale" },
+  { id: "fortigate", name: "FortiGate", width: 122 },
+  { id: "anyconnect", name: "AnyConnect", width: 57 },
+  { id: "globalprotect", name: "GlobalProtect", width: 96 },
+  { id: "pulse", name: "Pulse", width: 69 },
+  { id: "f5", name: "F5", width: 32 },
+  { id: "openvpn", name: "OpenVPN", width: 97 },
+  { id: "wireguard", name: "WireGuard", width: 103 },
+  { id: "netbird", name: "NetBird", width: 100 },
+  { id: "tailscale", name: "Tailscale", width: 97 },
 ] as const;
 
 export const clients = [
