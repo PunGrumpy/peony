@@ -102,9 +102,10 @@ const Page = () => (
     <LegalSection title="Removing your data">
       <p>
         Everything Peony keeps is on your Mac.{" "}
-        <code>brew uninstall --zap peony</code> removes the app, the helper, the
-        sudoers rule, your settings, and your preferences. Keychain items stay
-        until you delete them in Keychain Access.
+        <code>brew uninstall peony</code> removes the app, the helper and the
+        sudoers rule. <code>brew uninstall --zap peony</code> also removes your
+        settings and preferences. Keychain items stay until you delete them in
+        Keychain Access.
       </p>
     </LegalSection>
 
