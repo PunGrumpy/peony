@@ -49,6 +49,15 @@ final class ProfileStore {
       profiles = try JSONDecoder().decode([Profile].self, from: data)
     } catch {
       logger.error("Couldn't read profiles: \(error.localizedDescription, privacy: .public)")
+      // Saving would replace the user's VPNs with an empty list, so keep the file for them to recover.
+      let stamp = Int(Date.now.timeIntervalSince1970)
+      let aside = url.deletingLastPathComponent().appending(path: "profiles-unreadable-\(stamp).json")
+      do {
+        try FileManager.default.moveItem(at: url, to: aside)
+        logger.error("Moved the unreadable profiles to \(aside.path, privacy: .public)")
+      } catch {
+        logger.error("Couldn't move the unreadable profiles aside: \(error.localizedDescription, privacy: .public)")
+      }
     }
   }
 
