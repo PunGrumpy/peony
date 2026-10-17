@@ -65,7 +65,15 @@ nonisolated enum Keychain {
     return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
   }
 
-  static func setSecret(_ secret: String, for id: UUID, _ item: Item = .secret, label: String) {
+  struct SaveError: LocalizedError {
+    let status: OSStatus
+    var errorDescription: String? {
+      let reason = SecCopyErrorMessageString(status, nil) as String? ?? "error \(status)"
+      return "Peony couldn't save this to your Keychain (\(reason)). Enter it again and save."
+    }
+  }
+
+  static func setSecret(_ secret: String, for id: UUID, _ item: Item = .secret, label: String) throws(SaveError) {
     let match: [CFString: Any] = [
       kSecClass: kSecClassGenericPassword,
       kSecAttrService: service,
@@ -76,7 +84,8 @@ nonisolated enum Keychain {
     var item = match
     item[kSecValueData] = Data(secret.utf8)
     item[kSecAttrLabel] = label
-    SecItemAdd(item as CFDictionary, nil)
+    let status = SecItemAdd(item as CFDictionary, nil)
+    guard status == errSecSuccess else { throw SaveError(status: status) }
   }
 
   static func deleteSecret(for id: UUID, _ item: Item = .secret) {

@@ -20,14 +20,15 @@ final class ProfileStore {
     profiles.first { $0.id == id }
   }
 
-  func save(_ profile: Profile, secret: String?, openVPNPassword: String? = nil) {
+  func save(_ profile: Profile, secret: String?, openVPNPassword: String? = nil) throws {
+    // Secrets first: if the Keychain refuses, nothing is half-saved and Save can simply be pressed again.
+    if let secret { try Keychain.setSecret(secret, for: profile.id, label: "Peony: \(profile.name)") }
+    if let openVPNPassword { try Keychain.setSecret(openVPNPassword, for: profile.id, .openVPNPassword, label: "Peony: \(profile.name) password") }
     if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
       profiles[index] = profile
     } else {
       profiles.append(profile)
     }
-    if let secret { Keychain.setSecret(secret, for: profile.id, label: "Peony: \(profile.name)") }
-    if let openVPNPassword { Keychain.setSecret(openVPNPassword, for: profile.id, .openVPNPassword, label: "Peony: \(profile.name) password") }
     write()
   }
 
