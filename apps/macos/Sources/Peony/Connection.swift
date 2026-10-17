@@ -226,6 +226,7 @@ final class Connection {
       state = .off
       return
     }
+    let wasUp = state.address != nil
     state = .disconnecting
 
     switch kind {
@@ -237,7 +238,7 @@ final class Connection {
           try? await Task.sleep(for: .milliseconds(100))
         }
       }
-      if process != nil || state.address != nil {
+      if process != nil || wasUp {
         _ = await runHelper(.stop)
         for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil || process != nil {
           try? await Task.sleep(for: .milliseconds(100))
