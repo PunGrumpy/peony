@@ -1,5 +1,14 @@
 # @peony/macos
 
+## 0.1.2
+
+### Patch Changes
+
+- bcbac8c: If Peony can't read your VPN list, it keeps the file as `profiles-unreadable-<number>.json` in `~/Library/Application Support/Peony` instead of replacing it with an empty list the next time you save.
+- 35efc69: Peony checks the hosts you listed for FortiGate, AnyConnect, GlobalProtect and OpenVPN connections too, not only WireGuard, NetBird and Tailscale. Disconnect now turns off a tunnel Peony found already running when it opened.
+- 9ee517d: If macOS won't save a password or config to your Keychain, Settings now says so straight away, instead of the next connection failing with "doesn't have a password yet".
+- cbecc9f: `brew uninstall peony` now removes Peony's helper and its sudoers rule too, so no root access is left behind. `--zap` still also removes your VPN list and preferences.
+
 ## 0.1.1
 
 ### Patch Changes
