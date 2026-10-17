@@ -32,9 +32,12 @@ cask "peony" do
     Peony isn't notarized yet, so macOS blocks it the first time.
     Open System Settings > Privacy & Security and click Open Anyway.
 
-    Peony drives command-line VPN clients. Install the ones you use:
-      brew install openfortivpn        # FortiGate
-      brew install openconnect         # AnyConnect, GlobalProtect, Pulse, F5
-      brew install wireguard-tools     # WireGuard
+    Peony drives VPN clients it doesn't ship. Install the ones you use:
+      brew install openfortivpn          # FortiGate
+      brew install openconnect           # AnyConnect, GlobalProtect, Pulse, F5, Array
+      brew install openvpn               # OpenVPN
+      brew install wireguard-tools       # WireGuard
+      brew install --cask tailscale-app  # Tailscale
+    NetBird: https://docs.netbird.io/how-to/installation
   EOS
 end
