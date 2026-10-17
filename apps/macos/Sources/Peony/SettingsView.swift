@@ -376,7 +376,7 @@ private struct ProfileEditor: View {
   private func save() {
     do {
       let profile = try buildProfile()
-      model.store.save(profile, secret: secret.isEmpty ? nil : secret, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
+      try model.store.save(profile, secret: secret.isEmpty ? nil : secret, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
       model.settingsSelection = .profile(profile.id)
       error = nil
     } catch let failure as Validation.Failure {

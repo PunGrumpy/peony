@@ -135,7 +135,7 @@ final class AppModel {
       default:
         return
       }
-      store.save(profile, secret: nil)
+      try? store.save(profile, secret: nil) // No secret, so nothing to fail.
       connect(id)
     case .editProfile:
       settingsSelection = connection.profileID.map(SettingsSelection.profile) ?? .general
