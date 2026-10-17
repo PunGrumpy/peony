@@ -16,16 +16,17 @@ cask "peony" do
 
   app "Peony.app"
 
-  uninstall quit: "app.peony.Peony"
+  uninstall quit:   "app.peony.Peony",
+            delete: [
+              "/etc/sudoers.d/peony",
+              "/Library/PrivilegedHelperTools/app.peony.helper",
+              "/var/run/peony",
+            ]
 
-  zap delete: [
-        "/etc/sudoers.d/peony",
-        "/Library/PrivilegedHelperTools/app.peony.helper",
-      ],
-      trash:  [
-        "~/Library/Application Support/Peony",
-        "~/Library/Preferences/app.peony.Peony.plist",
-      ]
+  zap trash: [
+    "~/Library/Application Support/Peony",
+    "~/Library/Preferences/app.peony.Peony.plist",
+  ]
 
   caveats <<~EOS
     Peony isn't notarized yet, so macOS blocks it the first time.
