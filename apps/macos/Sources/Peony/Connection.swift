@@ -14,6 +14,8 @@ final class Connection {
   /// The tunnel tool's output, for the log window.
   private(set) var log: [LogLine] = []
 
+  /// Called when a tunnel comes up, whichever way it got there, so checks start with it.
+  @ObservationIgnored var onUp: ((UUID) -> Void)?
   @ObservationIgnored private var process: Process?
   @ObservationIgnored private var kind: Profile.Kind?
   @ObservationIgnored private var before = InterfaceSnapshot(ipv4: [:])
@@ -214,6 +216,7 @@ final class Connection {
     state = .on(address: address)
     since = nil
     logger.info("Adopted a running \(profile.kindTitle, privacy: .public) tunnel")
+    onUp?(profile.id)
   }
 
   // MARK: Disconnect
@@ -223,6 +226,7 @@ final class Connection {
       state = .off
       return
     }
+    let wasUp = state.address != nil
     state = .disconnecting
 
     switch kind {
@@ -234,7 +238,7 @@ final class Connection {
           try? await Task.sleep(for: .milliseconds(100))
         }
       }
-      if process != nil || state.address != nil {
+      if process != nil || wasUp {
         _ = await runHelper(.stop)
         for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil || process != nil {
           try? await Task.sleep(for: .milliseconds(100))
@@ -283,8 +287,12 @@ final class Connection {
   private func refreshDaemon() async {
     guard let status = await kind?.daemon?.status() else { return }
     if status.isConnected, state != .disconnecting {
-      if state.address == nil { since = .now }
+      let wasUp = state.address != nil
       state = .on(address: status.address ?? "")
+      if !wasUp {
+        since = .now
+        if let profileID { onUp?(profileID) }
+      }
     } else if state.address != nil {
       finish()
     }
@@ -373,6 +381,7 @@ final class Connection {
   private func markUp() {
     since = .now
     state = .on(address: newAddress() ?? "")
+    if let profileID { onUp?(profileID) }
   }
 
   private func processEnded(status: Int32) {
