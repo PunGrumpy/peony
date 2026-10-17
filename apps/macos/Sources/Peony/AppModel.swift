@@ -28,12 +28,13 @@ final class AppModel {
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "app")
 
   init() {
+    connection.onUp = { [weak self] id in
+      guard let self, let profile = store.profile(id) else { return }
+      startProbing(profile)
+    }
     Task { [weak self] in
       guard let self else { return }
       await connection.adopt(from: store.profiles)
-      if let id = connection.profileID, connection.state.address != nil, let profile = store.profile(id) {
-        startProbing(profile)
-      }
     }
     refreshHelperStatus()
     interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
@@ -96,7 +97,6 @@ final class AppModel {
     startBlooming()
     Task {
       await connection.connect(profile)
-      if connection.state.address != nil { startProbing(profile) }
     }
   }
 
