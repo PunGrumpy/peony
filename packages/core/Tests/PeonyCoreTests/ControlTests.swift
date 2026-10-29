@@ -127,6 +127,14 @@ struct ControlTests {
       """#
     #expect(try line(notRunning) == notRunningGolden)
 
+    let disabled = ControlReply.refused(.disabled)
+    let disabledGolden = #"""
+      {"error":{"code":"disabled","message":"Agents can't control Peony right now. Turn it on in Peony Settings › Agents."},"version":1}
+
+      """#
+    #expect(try line(disabled) == disabledGolden)
+    #expect(try decode(ControlReply.self, disabledGolden) == disabled)
+
     for refusal: ControlRefusal in [
       .ambiguous(query: "office", matches: [Self.office, Self.office]), .notRunning, .couldNotLaunch,
       .outdated(app: 2), .blocked(path: "/tmp/control.sock"), .pathTooLong,
@@ -333,6 +341,7 @@ struct ControlTests {
       (.refused(.outdated(app: 2)), 3),
       (.refused(.blocked(path: "/x")), 3),
       (.refused(.pathTooLong), 3),
+      (.refused(.disabled), 3),
     ]
     for (reply, code) in table {
       #expect(reply.exitCode == code, "\(reply)")

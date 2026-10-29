@@ -10,7 +10,7 @@ struct PeonyApp: App {
     // Peony's accent, for sidebars, switches and default buttons. An asset catalog's AccentColor
     // would do this, but compiling one needs Xcode. Registered, not set, so an accent the user
     // picked in System Settings still wins. 6 is the system's pink, the nearest to Peony's rose.
-    UserDefaults.standard.register(defaults: ["AppleAccentColor": 6])
+    UserDefaults.standard.register(defaults: ["AppleAccentColor": 6, ControlServer.enabledKey: true])
   }
 
   var body: some Scene {

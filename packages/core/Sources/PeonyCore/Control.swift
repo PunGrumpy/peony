@@ -221,6 +221,8 @@ public enum ControlRefusal: Error, Equatable, Sendable {
   case blocked(path: String)
   /// The home folder's path is too long for a Unix socket, so the app can't serve one.
   case pathTooLong
+  /// The user turned off "Let agents control Peony" in Settings.
+  case disabled
 
   public var message: String {
     switch self {
@@ -238,6 +240,8 @@ public enum ControlRefusal: Error, Equatable, Sendable {
       "Not allowed to reach Peony at \(path). If this runs in a sandbox, allow that Unix socket."
     case .pathTooLong:
       "Your home folder's path is too long for Peony's control socket, so `peony` can't reach the app."
+    case .disabled:
+      "Agents can't control Peony right now. Turn it on in Peony Settings › Agents."
     }
   }
 }
@@ -257,7 +261,7 @@ public enum ControlReply: Equatable, Sendable {
     case .answered(.timedOut, _): 5
     case .answered(.interrupted, _): 6
     case .refused(.noSuchVPN), .refused(.ambiguous): 4
-    case .refused(.notRunning), .refused(.couldNotLaunch), .refused(.outdated), .refused(.blocked), .refused(.pathTooLong): 3
+    case .refused(.notRunning), .refused(.couldNotLaunch), .refused(.outdated), .refused(.blocked), .refused(.pathTooLong), .refused(.disabled): 3
     }
   }
 }
@@ -422,7 +426,7 @@ extension ControlReply: Codable {
 
 extension ControlRefusal: Codable {
   private enum CodingKeys: String, CodingKey { case code, message, query, vpns, app, path }
-  private enum Code: String, Codable { case noSuchVPN, ambiguous, notRunning, couldNotLaunch, outdated, blocked, pathTooLong }
+  private enum Code: String, Codable { case noSuchVPN, ambiguous, notRunning, couldNotLaunch, outdated, blocked, pathTooLong, disabled }
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -436,6 +440,7 @@ extension ControlRefusal: Codable {
     case .outdated: self = .outdated(app: try container.decode(Int.self, forKey: .app))
     case .blocked: self = .blocked(path: try container.decode(String.self, forKey: .path))
     case .pathTooLong: self = .pathTooLong
+    case .disabled: self = .disabled
     }
   }
 
@@ -463,6 +468,8 @@ extension ControlRefusal: Codable {
       try container.encode(path, forKey: .path)
     case .pathTooLong:
       try container.encode(Code.pathTooLong, forKey: .code)
+    case .disabled:
+      try container.encode(Code.disabled, forKey: .code)
     }
   }
 }
