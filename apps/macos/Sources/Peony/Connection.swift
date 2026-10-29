@@ -14,6 +14,9 @@ final class Connection {
   /// The tunnel tool's output, for the log window.
   private(set) var log: [LogLine] = []
 
+  /// Whether a browser sign-in window is waiting on the user.
+  var isSigningIn: Bool { browser.isOpen }
+
   /// Called when a tunnel comes up, whichever way it got there, so checks start with it.
   @ObservationIgnored var onUp: ((UUID) -> Void)?
   @ObservationIgnored private var process: Process?

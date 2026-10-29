@@ -20,11 +20,15 @@ final class AppModel {
   private(set) var settingsRequest = 0
   private(set) var helperStatus = HelperInstaller.Status.missing
   private(set) var notice: String?
+  /// Counts every connect and disconnect anyone asked for, from the menu or `peony`, so a request
+  /// waiting on the tunnel can tell when another one replaced it.
+  @ObservationIgnored private(set) var intent = 0
 
   @ObservationIgnored private var lastSnapshot: InterfaceSnapshot?
   @ObservationIgnored private var probeTask: Task<Void, Never>?
   @ObservationIgnored private var interfaceCheck: Task<Void, Never>?
   @ObservationIgnored private var interfaceWatcher: InterfaceWatcher?
+  @ObservationIgnored private var control: ControlServer?
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "app")
 
   init() {
@@ -35,6 +39,10 @@ final class AppModel {
     Task { [weak self] in
       guard let self else { return }
       await connection.adopt(from: store.profiles)
+      // Opened only now, so a request from `peony` never races adoption.
+      let control = ControlServer(model: self)
+      control.start()
+      self.control = control
     }
     refreshHelperStatus()
     interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
@@ -91,23 +99,29 @@ final class AppModel {
 
   // MARK: Connecting
 
-  func connect(_ id: UUID) {
-    guard let profile = store.profile(id) else { return }
+  /// Returns the work it started, so a waiting `peony` request knows when the tunnel shows this attempt.
+  @discardableResult
+  func connect(_ id: UUID) -> Task<Void, Never>? {
+    guard let profile = store.profile(id) else { return nil }
+    intent += 1
     destinations = []
     startBlooming()
-    Task {
+    return Task {
       await connection.connect(profile)
     }
   }
 
-  func disconnect() {
+  @discardableResult
+  func disconnect() -> Task<Void, Never> {
+    intent += 1
     probeTask?.cancel()
     destinations = []
     startBlooming()
-    Task { await connection.disconnect() }
+    return Task { await connection.disconnect() }
   }
 
   func quit() {
+    control?.stop()
     connection.hangUp()
   }
 
