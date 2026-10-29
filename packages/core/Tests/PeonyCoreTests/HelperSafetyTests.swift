@@ -7,7 +7,7 @@ import Testing
 struct HelperSafetyTests {
   @Test func `forti config renders validated fields`() throws {
     let request = HelperRequest.FortiRequest(
-      host: "vpn.example.com", port: 8443, username: "alex", password: "p@ss word",
+      host: "vpn.example.com", port: 8443, credential: .password(username: "alex", password: "p@ss word"),
       trustedCert: "0123456789ABCDEF:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF", realm: nil)
     #expect(try request.configFile() == """
       host = vpn.example.com
@@ -21,8 +21,40 @@ struct HelperSafetyTests {
 
   @Test(arguments: ["secret\npppd-plugin = /tmp/evil.so", "a\rb", "tab\there"])
   func `passwords can't inject config lines`(password: String) {
-    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, username: "u", password: password, trustedCert: nil, realm: nil)
+    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .password(username: "u", password: password), trustedCert: nil, realm: nil)
     #expect(throws: Validation.Failure.self) { try request.configFile() }
+  }
+
+  @Test func `a cookie sign-in leaves credentials out of the config and argv`() throws {
+    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .cookie("abc123"), trustedCert: nil, realm: "corp")
+    let config = try request.configFile()
+    #expect(!config.contains("username"))
+    #expect(!config.contains("password"))
+    #expect(config == "host = vpn.example.com\nport = 443\nrealm = corp\n")
+    let invocation = try request.invocation(configPath: "/var/run/peony/forti.conf")
+    #expect(invocation.arguments.contains("--cookie-on-stdin"))
+    #expect(!invocation.arguments.contains { $0.contains("abc123") })
+    #expect(invocation.stdin == "SVPNCOOKIE=abc123")
+  }
+
+  @Test func `a password sign-in doesn't read a cookie from stdin`() throws {
+    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .password(username: "u", password: "p"), trustedCert: nil, realm: nil)
+    let invocation = try request.invocation(configPath: "/x")
+    #expect(invocation.arguments == ["-c", "/x"])
+    #expect(invocation.stdin == nil)
+  }
+
+  @Test(arguments: ["abc\nSVPNCOOKIE=evil", "a\rb", ""])
+  func `cookies can't carry line breaks`(cookie: String) {
+    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .cookie(cookie), trustedCert: nil, realm: nil)
+    #expect(throws: Validation.Failure.self) { try request.invocation(configPath: "/x") }
+  }
+
+  @Test func `forti requests round-trip through the helper's JSON`() throws {
+    for credential in [HelperRequest.FortiRequest.Credential.cookie("abc"), .password(username: "u", password: "p")] {
+      let request = HelperRequest.forti(.init(host: "vpn.example.com", port: 443, credential: credential, trustedCert: nil, realm: nil))
+      #expect(try JSONDecoder().decode(HelperRequest.self, from: JSONEncoder().encode(request)) == request)
+    }
   }
 
   @Test(arguments: ["", "-oProxyCommand=evil", "vpn example.com", "vpn.example.com;rm", "$(whoami)"])

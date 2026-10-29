@@ -31,17 +31,48 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
   public struct Forti: Codable, Hashable, Sendable {
     public var host: String
     public var port: Int
-    public var username: String
+    public var login: Login
     /// SHA-256 digest of a gateway certificate to trust even if it doesn't validate.
     public var trustedCert: String?
     public var realm: String?
 
-    public init(host: String = "", port: Int = 443, username: String = "", trustedCert: String? = nil, realm: String? = nil) {
+    public init(host: String = "", port: Int = 443, login: Login = .password(username: ""), trustedCert: String? = nil, realm: String? = nil) {
       self.host = host
       self.port = port
-      self.username = username
+      self.login = login
       self.trustedCert = trustedCert
       self.realm = realm
+    }
+
+    /// How the gateway wants you to sign in.
+    public enum Login: Codable, Hashable, Sendable {
+      /// A username and a password saved in the Keychain.
+      case password(username: String)
+      /// Single sign-on, such as SAML with Microsoft Entra, finished in a browser window.
+      case browser
+    }
+
+    private enum CodingKeys: String, CodingKey {
+      case host, port, login, trustedCert, realm
+    }
+
+    /// Profiles saved before browser sign-in existed have a `username` and no `login`.
+    private enum LegacyKeys: String, CodingKey {
+      case username
+    }
+
+    public init(from decoder: Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      host = try container.decode(String.self, forKey: .host)
+      port = try container.decode(Int.self, forKey: .port)
+      if let login = try container.decodeIfPresent(Login.self, forKey: .login) {
+        self.login = login
+      } else {
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+        login = .password(username: try legacy.decode(String.self, forKey: .username))
+      }
+      trustedCert = try container.decodeIfPresent(String.self, forKey: .trustedCert)
+      realm = try container.decodeIfPresent(String.self, forKey: .realm)
     }
   }
 
@@ -136,7 +167,8 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
   /// Whether connecting needs a password from the Keychain.
   public var needsPassword: Bool {
     switch kind {
-    case .forti, .openConnect: true
+    case .forti(let settings): if case .password = settings.login { true } else { false }
+    case .openConnect: true
     case .openVPN(let settings): !settings.username.isEmpty
     case .wireGuard, .netBird, .tailscale: false
     }
