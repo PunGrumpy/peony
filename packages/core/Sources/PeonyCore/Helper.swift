@@ -8,7 +8,7 @@ import Foundation
 /// for longer than the tunnel takes to read them.
 public enum Helper {
   /// Bump whenever the helper's behaviour changes; the app reinstalls on mismatch.
-  public static let version = "3"
+  public static let version = "4"
   public static let installedPath = "/Library/PrivilegedHelperTools/app.peony.helper"
   public static let sudoersPath = "/etc/sudoers.d/peony"
   /// Root-only scratch space for generated configs.
@@ -70,7 +70,7 @@ public enum HelperRequest: Codable, Equatable, Sendable {
       case .password:
         return (["-c", configPath], nil)
       case .cookie(let cookie):
-        let value = try Validation.secretLine(cookie, field: "Cookie")
+        let value = try Validation.fortiCookie(cookie)
         return (["-c", configPath, "--cookie-on-stdin"], "SVPNCOOKIE=\(value)")
       }
     }

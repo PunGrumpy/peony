@@ -44,7 +44,13 @@ struct HelperSafetyTests {
     #expect(invocation.stdin == nil)
   }
 
-  @Test(arguments: ["abc\nSVPNCOOKIE=evil", "a\rb", ""])
+  @Test func `a real-sized cookie fits`() throws {
+    let cookie = String(repeating: "aB3+/=", count: 400)
+    let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .cookie(cookie), trustedCert: nil, realm: nil)
+    #expect(try request.invocation(configPath: "/x").stdin == "SVPNCOOKIE=\(cookie)")
+  }
+
+  @Test(arguments: ["abc\nSVPNCOOKIE=evil", "a\rb", "", "a b", "a;b", String(repeating: "a", count: 4086)])
   func `cookies can't carry line breaks`(cookie: String) {
     let request = HelperRequest.FortiRequest(host: "vpn.example.com", port: 443, credential: .cookie(cookie), trustedCert: nil, realm: nil)
     #expect(throws: Validation.Failure.self) { try request.invocation(configPath: "/x") }

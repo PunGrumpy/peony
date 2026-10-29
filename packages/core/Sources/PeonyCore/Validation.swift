@@ -43,9 +43,23 @@ public enum Validation {
   /// characters (newlines especially) would let one value inject another key.
   public static func secretLine(_ value: String, field: String, allowEmpty: Bool = false) throws(Failure) -> String {
     guard allowEmpty || !value.isEmpty else { throw .invalid(field: field, reason: "is empty") }
-    guard value.count <= 1024, !value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
+    guard value.count <= 1024 else { throw .invalid(field: field, reason: "is longer than 1024 characters") }
+    guard !value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
       throw .invalid(field: field, reason: "can't contain line breaks or control characters")
     }
+    return value
+  }
+
+  /// A FortiGate `SVPNCOOKIE` value. openfortivpn holds `SVPNCOOKIE=<value>` in a 4096-byte buffer,
+  /// and RFC 6265 cookie octets leave no room for whitespace, quotes or separators.
+  public static func fortiCookie(_ value: String) throws(Failure) -> String {
+    guard !value.isEmpty else { throw .invalid(field: "Cookie", reason: "is empty") }
+    guard value.utf8.count <= 4096 - "SVPNCOOKIE=".utf8.count else {
+      throw .invalid(field: "Cookie", reason: "is longer than openfortivpn accepts")
+    }
+    guard value.utf8.allSatisfy({ $0 == 0x21 || (0x23...0x2B).contains($0) || (0x2D...0x3A).contains($0)
+      || (0x3C...0x5B).contains($0) || (0x5D...0x7E).contains($0) })
+    else { throw .invalid(field: "Cookie", reason: "contains characters a cookie can't have") }
     return value
   }
 
