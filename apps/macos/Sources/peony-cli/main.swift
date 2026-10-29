@@ -1,6 +1,7 @@
 // peony: drive Peony.app from a terminal, a script or an AI agent.
 //
 //   peony list | status | connect <name|id> | disconnect   [--json] [--timeout <seconds>]
+//   peony mcp                                              serve those as tools to an AI agent
 //
 // It asks the running app over its control socket and never starts a tunnel itself: the app is
 // the only owner of the connection. It depends on PeonyCore alone, so it can't.
@@ -15,13 +16,15 @@ let usage = """
     status               the tunnel: state, address, failure and its fix, host checks
     connect <name|id>    turn any other VPN off, connect this one, and wait until it's on or failed
     disconnect           turn the active VPN off and wait until it's off
+    mcp                  serve these as tools over MCP on stdin and stdout, for an AI agent to run
 
   Options:
     --json               print one JSON object on stdout, the same shape for every command
     --timeout <seconds>  how long connect and disconnect wait, 1 to 600 (90 and 30 by default)
     -h, --help           show this help
 
-  connect and disconnect open Peony if it isn't running; list and status don't.
+  connect and disconnect open Peony if it isn't running; list and status don't. Give an agent
+  `peony mcp` as the command of an MCP server, with the full path to this tool.
 
   Exit codes: 0 done, 1 the VPN failed, 2 usage, 3 Peony isn't available,
   4 no VPN by that name, 5 timed out, 6 interrupted by another request
@@ -34,22 +37,15 @@ enum Command: Equatable {
   case status
   case connect(String, WaitLimit)
   case disconnect(WaitLimit)
+  case mcp
 
   /// Nil for what `peony` answers by itself. `list` is `status` printed as a list.
   var request: ControlRequest? {
     switch self {
-    case .help: nil
+    case .help, .mcp: nil
     case .list, .status: .status
     case .connect(let vpn, let wait): .connect(vpn: vpn, wait: wait)
     case .disconnect(let wait): .disconnect(wait: wait)
-    }
-  }
-
-  /// Reading status never opens Peony; changing the tunnel does.
-  var launchesApp: Bool {
-    switch self {
-    case .help, .list, .status: false
-    case .connect, .disconnect: true
     }
   }
 }
@@ -115,66 +111,19 @@ func parse(_ arguments: [String]) throws(UsageError) -> Invocation {
   case "disconnect":
     guard arguments.isEmpty else { throw UsageError(message: "disconnect takes no arguments.") }
     command = .disconnect(timeout ?? .disconnect)
+  case "mcp":
+    guard arguments.isEmpty, timeout == nil, !json else { throw UsageError(message: "mcp takes no arguments or options.") }
+    command = .mcp
   default:
     throw UsageError(message: "Unknown command \(name).")
   }
   return Invocation(command: command, json: json)
 }
 
-/// Sends the request, opening Peony first when the command may and nothing answered.
-func send(_ request: ControlRequest, launching: Bool) async -> ControlReply {
-  guard let path = Control.socketPath() else { return .refused(.pathTooLong) }
-  // The app holds a connect or disconnect until its own deadline, so allow a little past it.
-  let timeout: Duration = switch request {
-  case .status: .seconds(5)
-  case .connect(_, let wait), .disconnect(let wait): wait.duration + .seconds(10)
-  }
-  let reply = await ControlSocket.send(request, to: path, timeout: timeout)
-  guard launching, reply == .refused(.notRunning) else { return reply }
-  guard launchApp() else { return .refused(.couldNotLaunch) }
-
-  let deadline = ContinuousClock.now + .seconds(10)
-  while ContinuousClock.now < deadline {
-    try? await Task.sleep(for: .milliseconds(250))
-    switch await ControlSocket.send(.status, to: path, timeout: .seconds(2)) {
-    case .refused(.notRunning): continue
-    case .answered: return await ControlSocket.send(request, to: path, timeout: timeout)
-    case let other: return other
-    }
-  }
-  return .refused(.couldNotLaunch)
-}
-
-/// Opens the Peony.app this binary sits in (Contents/Helpers/peony), so another copy elsewhere on
-/// disk is never the one launched. Run from anywhere else, it opens Peony by bundle id.
-func launchApp() -> Bool {
-  let executable = (Bundle.main.executableURL ?? URL(filePath: CommandLine.arguments[0])).resolvingSymlinksInPath()
-  let helpers = executable.deletingLastPathComponent()
-  let app = helpers.deletingLastPathComponent().deletingLastPathComponent()
-  let target = helpers.lastPathComponent == "Helpers" && app.pathExtension == "app"
-    ? [app.path(percentEncoded: false)]
-    : ["-b", "app.peony.Peony"]
-  let open = Process()
-  open.executableURL = URL(filePath: "/usr/bin/open")
-  open.arguments = ["-g"] + target
-  do {
-    try open.run()
-  } catch {
-    return false
-  }
-  open.waitUntilExit()
-  return open.terminationStatus == 0
-}
-
 /// JSON is the reply as it came, one object on stdout. Text is a short summary for people, with
 /// refusals on stderr.
 func render(_ reply: ControlReply, for command: Command, json: Bool) -> (stdout: String, stderr: String) {
-  if json {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-    let text = (try? encoder.encode(reply)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
-    return (text + "\n", "")
-  }
+  if json { return (Control.envelope(reply) + "\n", "") }
   switch reply {
   case .refused(let refusal):
     var lines = ["peony: " + refusal.message]
@@ -258,10 +207,14 @@ do {
 }
 
 guard let request = invocation.command.request else {
-  print(usage, terminator: "")
+  if invocation.command == .mcp {
+    await serveMCP()
+  } else {
+    print(usage, terminator: "")
+  }
   exit(0)
 }
-let reply = await send(request, launching: invocation.command.launchesApp)
+let reply = await send(request)
 let output = render(reply, for: invocation.command, json: invocation.json)
 FileHandle.standardOutput.write(Data(output.stdout.utf8))
 FileHandle.standardError.write(Data(output.stderr.utf8))
