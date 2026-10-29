@@ -12,7 +12,7 @@ let package = Package(
   dependencies: [.package(path: "../../packages/core")],
   targets: [
     // Every view, driven by plain values, so it renders the same in the app and in snapshots.
-    .target(name: "PeonyUI", swiftSettings: mainActorByDefault),
+    .target(name: "PeonyUI", dependencies: [core], swiftSettings: mainActorByDefault),
     // The app: profiles, the connection, and the menu bar scene.
     .executableTarget(name: "Peony", dependencies: [core, "PeonyUI"], swiftSettings: mainActorByDefault),
     // The root helper. Foundation only; validates everything through PeonyCore.
@@ -21,6 +21,6 @@ let package = Package(
     // the tunnel. Named so its product can't collide with `Peony` on a case-insensitive disk.
     .executableTarget(name: "peony-cli", dependencies: [core]),
     // `bun run snapshots` renders every panel state to PNG for design review.
-    .executableTarget(name: "peony-snapshots", dependencies: ["PeonyUI"], swiftSettings: mainActorByDefault),
+    .executableTarget(name: "peony-snapshots", dependencies: [core, "PeonyUI"], swiftSettings: mainActorByDefault),
   ]
 )

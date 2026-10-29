@@ -14,12 +14,16 @@ final class AppModel {
   /// Advances while connecting, so the menu bar flower blooms.
   private(set) var bloomStep = 0
   private(set) var opensAtLogin = SMAppService.mainApp.status == .enabled
-  /// Which profile the settings window should show, set when the panel sends the user there.
+  /// The settings window's pane. It outlives the window, so reopening Settings shows the last one.
   var settingsSelection: SettingsSelection? = .general
-  /// Bumped to ask the settings window to come forward.
-  private(set) var settingsRequest = 0
+  /// Whether the settings window shows the Add VPN sheet.
+  var isAddingVPN = false
+  /// Unsaved edits, by VPN. Kept here rather than in the editor, so moving to another pane, or
+  /// closing the window, never loses what was typed. A VPN has an entry only while it differs.
+  private(set) var drafts: [UUID: ProfileDraft] = [:]
   private(set) var helperStatus = HelperInstaller.Status.missing
-  private(set) var notice: String?
+  private(set) var helperNotice: String?
+  private(set) var loginNotice: String?
   /// Counts every connect and disconnect anyone asked for, from the menu or `peony`, so a request
   /// waiting on the tunnel can tell when another one replaced it.
   @ObservationIgnored private(set) var intent = 0
@@ -84,13 +88,10 @@ final class AppModel {
       },
       fix: { [weak self] fix in self?.apply(fix, openSettings: openSettings) },
       addVPN: { [weak self] in
-        self?.settingsSelection = .new
+        self?.isAddingVPN = true
         openSettings()
       },
-      openSettings: { [weak self] in
-        self?.settingsSelection = self?.connection.profileID.map(SettingsSelection.profile) ?? .general
-        openSettings()
-      },
+      openSettings: openSettings,
       showLog: openLog,
       setOpensAtLogin: { [weak self] in self?.setOpensAtLogin($0) },
       quit: { NSApp.terminate(nil) }
@@ -182,9 +183,9 @@ final class AppModel {
   func installHelper() {
     do {
       try HelperInstaller.install()
-      notice = nil
+      helperNotice = nil
     } catch {
-      notice = error.localizedDescription
+      helperNotice = error.localizedDescription
     }
     refreshHelperStatus()
   }
@@ -192,9 +193,9 @@ final class AppModel {
   func uninstallHelper() {
     do {
       try HelperInstaller.uninstall()
-      notice = nil
+      helperNotice = nil
     } catch {
-      notice = error.localizedDescription
+      helperNotice = error.localizedDescription
     }
     refreshHelperStatus()
   }
@@ -202,11 +203,52 @@ final class AppModel {
   func setOpensAtLogin(_ enabled: Bool) {
     do {
       if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-      notice = nil
+      loginNotice = nil
     } catch {
-      notice = "macOS didn't allow opening at login. Move Peony to Applications and try again."
+      loginNotice = "macOS didn't allow opening at login. Move Peony to Applications and try again."
     }
     opensAtLogin = SMAppService.mainApp.status == .enabled
+  }
+
+  // MARK: Editing VPNs
+
+  /// The form as saved, with whether the Keychain holds its secrets.
+  func savedDraft(_ profile: Profile) -> ProfileDraft {
+    ProfileDraft(
+      profile,
+      hasSavedSecret: Keychain.hasSecret(for: profile.id),
+      hasSavedOpenVPNPassword: Keychain.hasSecret(for: profile.id, .openVPNPassword))
+  }
+
+  func draft(_ profile: Profile) -> ProfileDraft {
+    drafts[profile.id] ?? savedDraft(profile)
+  }
+
+  /// Keeps an edit, or forgets it once it matches what's saved again.
+  func setDraft(_ draft: ProfileDraft, for profile: Profile) {
+    drafts[profile.id] = draft == savedDraft(profile) ? nil : draft
+  }
+
+  func revert(_ id: UUID) {
+    drafts[id] = nil
+  }
+
+  /// Writes the Keychain first, then the list. Throws what the Keychain refused.
+  func save(_ saved: ProfileDraft.Saved) throws {
+    try store.save(saved.profile, secret: saved.secret, openVPNPassword: saved.openVPNPassword)
+    drafts[saved.profile.id] = nil
+  }
+
+  /// Turns the VPN off first if it's connected, then selects its neighbour in the list.
+  func delete(_ id: UUID) {
+    if connection.profileID == id { disconnect() }
+    let ids = store.profiles.map(\.id)
+    let index = ids.firstIndex(of: id)
+    store.delete(id)
+    drafts[id] = nil
+    let remaining = store.profiles.map(\.id)
+    settingsSelection = index.flatMap { remaining.indices.contains($0) ? remaining[$0] : remaining.last }
+      .map(SettingsSelection.profile) ?? .general
   }
 
   // MARK: Background work
@@ -275,7 +317,7 @@ final class AppModel {
 
 enum SettingsSelection: Hashable {
   case general
-  case new
+  case agents
   case profile(UUID)
 }
 
