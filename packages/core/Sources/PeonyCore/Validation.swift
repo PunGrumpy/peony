@@ -84,7 +84,7 @@ public enum Validation {
   /// wg-quick names the interface after the file; macOS wants a short, simple name.
   public static func interfaceName(_ value: String) throws(Failure) -> String {
     guard value.wholeMatch(of: /[a-z][a-z0-9_\-]{0,14}/) != nil else {
-      throw .invalid(field: "Interface", reason: "use 1–15 lowercase letters, digits, - or _, starting with a letter")
+      throw .invalid(field: "Interface", reason: "should be 1–15 lowercase letters, digits, - or _, starting with a letter")
     }
     return value
   }
