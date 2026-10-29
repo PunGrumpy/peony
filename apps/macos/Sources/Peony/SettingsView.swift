@@ -1,9 +1,11 @@
 import AppKit
 import PeonyCore
 import PeonyUI
+import ServiceManagement
 import SwiftUI
-import UniformTypeIdentifiers
 
+/// The settings window: binds the panes in PeonyUI to the app. Stock controls and the person's
+/// own accent colour throughout, per the macOS guidelines; Peony's brand stays in the panel.
 struct SettingsView: View {
   @Bindable var model: AppModel
 
@@ -12,37 +14,36 @@ struct SettingsView: View {
       List(selection: $model.settingsSelection) {
         Label("General", systemImage: "gearshape")
           .tag(SettingsSelection.general)
+        // A terminal: agents reach Peony through the `peony` command, whichever agent runs it.
+        Label("Agents", systemImage: "terminal")
+          .tag(SettingsSelection.agents)
         Section("VPNs") {
           ForEach(model.store.profiles) { profile in
-            Label {
-              HStack {
-                Text(profile.name)
-                Spacer()
-                // Only the live VPN has a dot, so it reads without its colour too.
-                if model.connection.profileID == profile.id, model.connection.state.address != nil {
-                  Circle().fill(Brand.rose).frame(width: 6, height: 6)
-                    .help("Connected")
-                    .accessibilityLabel("Connected")
-                }
-              }
-            } icon: {
-              Image(systemName: Self.symbol(for: profile.kind))
-            }
+            VPNRow(
+              profile: profile,
+              isEdited: model.drafts[profile.id] != nil,
+              isConnected: model.connection.profileID == profile.id && model.connection.state.address != nil)
               .tag(SettingsSelection.profile(profile.id))
           }
           .onMove { model.store.move(from: $0, to: $1) }
-          Label("Add VPN", systemImage: "plus")
-            .tag(SettingsSelection.new)
+          // A button beside the list it adds to, not a row to select: it opens a sheet.
+          Button {
+            model.isAddingVPN = true
+          } label: {
+            Label("Add VPN…", systemImage: "plus")
+          }
+          .buttonStyle(.borderless)
+          .keyboardShortcut("n")
+          .help("Add a VPN")
         }
       }
-      .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+      .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 260)
     } detail: {
       switch model.settingsSelection {
       case .general, nil:
         GeneralSettings(model: model)
-      case .new:
-        ProfileEditor(model: model, profile: nil)
-          .id("new")
+      case .agents:
+        AgentsSettings()
       case .profile(let id):
         if let profile = model.store.profile(id) {
           ProfileEditor(model: model, profile: profile)
@@ -52,18 +53,39 @@ struct SettingsView: View {
         }
       }
     }
-    .frame(minWidth: 680, minHeight: 480)
-    .tint(Brand.rose)
+    .frame(minWidth: 680, minHeight: 540)
+    .sheet(isPresented: $model.isAddingVPN) {
+      AddVPN(model: model)
+    }
+    .background(SettingsWindowButtons())
   }
+}
 
-  static func symbol(for kind: Profile.Kind) -> String {
-    switch kind {
-    case .forti: "lock.shield.fill"
-    case .openConnect: "network.badge.shield.half.filled"
-    case .openVPN: "key.horizontal.fill"
-    case .wireGuard: "bolt.horizontal.fill"
-    case .netBird: "point.3.filled.connected.trianglepath.dotted"
-    case .tailscale: "circle.grid.3x3.fill"
+private struct VPNRow: View {
+  let profile: Profile
+  let isEdited: Bool
+  let isConnected: Bool
+
+  var body: some View {
+    Label {
+      HStack {
+        Text(profile.name)
+        Spacer()
+        if isEdited {
+          Text("Edited")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .help("Has changes you haven't saved")
+        }
+        // Only the live VPN has a dot, so it reads without its colour too.
+        if isConnected {
+          Circle().fill(Brand.rose).frame(width: 6, height: 6)
+            .help("Connected")
+            .accessibilityLabel("Connected")
+        }
+      }
+    } icon: {
+      Image(systemName: VPNType(profile.kind).symbol)
     }
   }
 }
@@ -74,401 +96,207 @@ private struct GeneralSettings: View {
   let model: AppModel
 
   var body: some View {
-    Form {
-      Section("Helper") {
-        LabeledContent {
-          switch model.helperStatus {
-          case .installed:
-            Button("Uninstall…") { model.uninstallHelper() }
-          case .outdated:
-            Button("Update") { model.installHelper() }.buttonStyle(.borderedProminent)
-          case .missing:
-            Button("Install") { model.installHelper() }.buttonStyle(.borderedProminent)
-          }
-        } label: {
-          Text(helperTitle)
-          Text("A small root tool that starts tunnels and sets routes. It only accepts validated settings from your VPN list and only runs tools from Homebrew.")
-        }
+    GeneralPane(
+      helper: helper,
+      helperNotice: model.helperNotice,
+      opensAtLogin: model.opensAtLogin,
+      loginNotice: model.loginNotice,
+      installHelper: model.installHelper,
+      uninstallHelper: model.uninstallHelper,
+      setOpensAtLogin: model.setOpensAtLogin,
+      openLoginItems: SMAppService.openSystemSettingsLoginItems)
+      .navigationTitle("General")
+      .navigationSubtitle("One VPN on at a time, so routes and DNS never fight")
+      .onAppear { model.refreshHelperStatus() }
+      .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+        model.refreshHelperStatus()
       }
-
-      Section("Tools") {
-        ToolRow(name: "openfortivpn", purpose: "FortiGate", install: "brew install openfortivpn")
-        ToolRow(name: "openconnect", purpose: "AnyConnect, GlobalProtect, Pulse, F5", install: "brew install openconnect")
-        ToolRow(name: "openvpn", purpose: "OpenVPN", install: "brew install openvpn")
-        ToolRow(name: "wg-quick", purpose: "WireGuard", install: "brew install wireguard-tools")
-        ToolRow(name: "netbird", purpose: "NetBird", install: "brew install netbirdio/tap/netbird")
-        ToolRow(name: "tailscale", purpose: "Tailscale", install: "brew install --cask tailscale-app")
-      }
-
-      Section {
-        Toggle("Open Peony at login", isOn: Binding(
-          get: { model.opensAtLogin },
-          set: { model.setOpensAtLogin($0) }))
-      }
-
-      if let notice = model.notice {
-        Section { Text(notice).foregroundStyle(Brand.warning) }
-      }
-    }
-    .formStyle(.grouped)
-    .navigationTitle("General")
-    .navigationSubtitle("One VPN on at a time, so routes and DNS never fight")
-    .onAppear { model.refreshHelperStatus() }
   }
 
-  private var helperTitle: String {
+  private var helper: GeneralPane.Helper {
     switch model.helperStatus {
-    case .installed: "Installed"
-    case .outdated: "Needs an update"
-    case .missing: "Not installed"
+    case .installed: .installed
+    case .outdated: .outdated
+    case .missing: .missing
     }
   }
 }
 
-private struct ToolRow: View {
-  let name: String
-  let purpose: String
-  let install: String
+// MARK: - Agents
+
+private struct AgentsSettings: View {
+  @AppStorage(ControlServer.enabledKey) private var isEnabled = true
+  @State private var installed: [AgentSetup.Agent: Bool] = [:]
 
   var body: some View {
-    LabeledContent {
-      if AppTools.find(name) != nil {
-        Label("Installed", systemImage: "checkmark.circle.fill")
-          .labelStyle(.titleAndIcon)
-          .foregroundStyle(Brand.muted)
-      } else {
-        Button("Install with Homebrew") { Terminal.run(install) }
+    AgentsPane(
+      isEnabled: $isEnabled,
+      rows: AgentSetup.Agent.allCases.map { agent in
+        AgentsPane.Row(agent: agent, isInstalled: installed[agent], install: AgentSetup.install(agent, cli: AgentLocator.cli))
+      },
+      add: { row in
+        switch row.install {
+        case .command(let command): Terminal.run(command)
+        case .link(let url, _): NSWorkspace.shared.open(url)
+        }
+      },
+      copy: { row in
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(row.install.copyText, forType: .string)
+      })
+      .navigationTitle("Agents")
+      .task { await locate() }
+      .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+        Task { await locate() }
       }
-    } label: {
-      Text(name).font(.system(.body, design: .monospaced))
-      Text(purpose)
+  }
+
+  private func locate() async {
+    for agent in AgentSetup.Agent.allCases {
+      installed[agent] = await AgentLocator.isInstalled(agent)
     }
   }
 }
 
-// MARK: - Profile editor
+/// Finds the agents Peony can add itself to.
+enum AgentLocator {
+  /// `peony` inside this app, which agents start as `peony mcp`.
+  static var cli: String {
+    Bundle.main.bundleURL.appending(path: "Contents/Helpers/peony").path(percentEncoded: false)
+  }
 
-private enum KindChoice: String, CaseIterable, Identifiable {
-  case forti, openConnect, openVPN, wireGuard, netBird, tailscale
-  var id: Self { self }
-
-  var title: String {
-    switch self {
-    case .forti: "FortiGate"
-    case .openConnect: "AnyConnect & more"
-    case .openVPN: "OpenVPN"
-    case .wireGuard: "WireGuard"
-    case .netBird: "NetBird"
-    case .tailscale: "Tailscale"
+  static func isInstalled(_ agent: AgentSetup.Agent) async -> Bool {
+    switch agent {
+    case .claudeCode: await findCommand("claude")
+    case .codex: await findCommand("codex")
+    case .cursor: NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.todesktop.230313mzl4w4u92") != nil
     }
   }
 
-  var symbol: String {
-    switch self {
-    case .forti: "lock.shield.fill"
-    case .openConnect: "network.badge.shield.half.filled"
-    case .openVPN: "key.horizontal.fill"
-    case .wireGuard: "bolt.horizontal.fill"
-    case .netBird: "point.3.filled.connected.trianglepath.dotted"
-    case .tailscale: "circle.grid.3x3.fill"
+  /// The usual install folders first, then the login shell, which knows the PATH Terminal will use.
+  private static func findCommand(_ name: String) async -> Bool {
+    let home = FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false)
+    for folder in ["\(home)/.local/bin", "/opt/homebrew/bin", "/usr/local/bin"]
+    where FileManager.default.isExecutableFile(atPath: "\(folder)/\(name)") {
+      return true
     }
-  }
-
-  init(_ kind: Profile.Kind) {
-    switch kind {
-    case .forti: self = .forti
-    case .openConnect: self = .openConnect
-    case .openVPN: self = .openVPN
-    case .wireGuard: self = .wireGuard
-    case .netBird: self = .netBird
-    case .tailscale: self = .tailscale
-    }
+    guard let entry = getpwuid(getuid()), let shell = entry.pointee.pw_shell.map({ String(cString: $0) }) else { return false }
+    let result = try? await Command.run(shell, arguments: ["-l", "-c", "command -v \(name)"])
+    return result?.succeeded == true && !result!.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 }
 
-private enum FortiLoginChoice: String, CaseIterable, Identifiable {
-  case password, browser
-  var id: Self { self }
+// MARK: - Editing a VPN
 
-  var title: String {
-    switch self {
-    case .password: "Password"
-    case .browser: "Browser (SSO)"
-    }
-  }
-}
-
+/// Edits stay in `AppModel.drafts` until saved, so switching panes keeps them.
 private struct ProfileEditor: View {
   let model: AppModel
-  let original: Profile?
-  let hasSavedSecret: Bool
-  let hasSavedOpenVPNPassword: Bool
+  let profile: Profile
 
-  @State private var name: String
-  @State private var choice: KindChoice
-  @State private var forti: Profile.Forti
-  @State private var fortiLogin: FortiLoginChoice
-  @State private var fortiUsername: String
-  @State private var openConnect: Profile.OpenConnect
-  @State private var wireGuard: Profile.WireGuard
-  @State private var openVPN: Profile.OpenVPN
-  @State private var openVPNPassword: String
-  @State private var netBird: Profile.NetBird
-  @State private var secret: String
-  @State private var destinations: String
-  @State private var error: String?
-  @State private var confirmingDelete = false
-
-  init(model: AppModel, profile: Profile?) {
-    self.model = model
-    original = profile
-    let kind = profile?.kind ?? .forti(.init())
-    _name = State(initialValue: profile?.name ?? "")
-    _choice = State(initialValue: KindChoice(kind))
-    let fortiSettings: Profile.Forti = if case .forti(let settings) = kind { settings } else { .init() }
-    _forti = State(initialValue: fortiSettings)
-    switch fortiSettings.login {
-    case .password(let username):
-      _fortiLogin = State(initialValue: .password)
-      _fortiUsername = State(initialValue: username)
-    case .browser:
-      _fortiLogin = State(initialValue: .browser)
-      _fortiUsername = State(initialValue: "")
-    }
-    if case .openConnect(let settings) = kind { _openConnect = State(initialValue: settings) } else { _openConnect = State(initialValue: .init()) }
-    if case .wireGuard(let settings) = kind { _wireGuard = State(initialValue: settings) } else { _wireGuard = State(initialValue: .init()) }
-    if case .openVPN(let settings) = kind { _openVPN = State(initialValue: settings) } else { _openVPN = State(initialValue: .init()) }
-    if case .netBird(let settings) = kind { _netBird = State(initialValue: settings) } else { _netBird = State(initialValue: .init()) }
-    // The saved secret stays in the Keychain: reading it here would make macOS ask permission
-    // just to show a form. An empty field means "keep what's saved".
-    _secret = State(initialValue: "")
-    _openVPNPassword = State(initialValue: "")
-    hasSavedSecret = profile.map { Keychain.hasSecret(for: $0.id) } ?? false
-    hasSavedOpenVPNPassword = profile.map { Keychain.hasSecret(for: $0.id, .openVPNPassword) } ?? false
-    _destinations = State(initialValue: profile?.destinations.joined(separator: ", ") ?? "")
-  }
+  @State private var saveError: String?
+  @State private var toolsChecked = 0
 
   var body: some View {
-    Form {
-      if original == nil {
-        Section {
-          Picker("Kind", selection: $choice) {
-            ForEach(KindChoice.allCases) { kind in
-              Label(kind.title, systemImage: kind.symbol).tag(kind)
-            }
+    let draft = model.draft(profile)
+    let isEdited = model.drafts[profile.id] != nil
+    let canSave = isEdited && draft.problems.isEmpty
+    ProfileForm(
+      draft: Binding(get: { model.draft(profile) }, set: { model.setDraft($0, for: profile) }),
+      isNew: false,
+      revealsAllProblems: true,
+      missingTool: missingTool(draft.type),
+      saveError: saveError,
+      installTool: { Terminal.run(draft.type.tool.install) },
+      deletion: ProfileForm.Deletion(
+        name: profile.name, isConnected: model.connection.profileID == profile.id,
+        perform: { model.delete(profile.id) }))
+      .navigationTitle(profile.name)
+      .navigationSubtitle(profile.kindTitle)
+      .toolbar {
+        ToolbarItemGroup(placement: .primaryAction) {
+          Button("Revert") {
+            model.revert(profile.id)
+            saveError = nil
           }
-        } footer: {
-          Text("Pick the kind of VPN, then fill in what your admin gave you.")
+          .help("Go back to what's saved")
+          .disabled(!isEdited)
+          Button("Save") { save(draft) }
+            .keyboardShortcut(.defaultAction)
+            .buttonStyle(.borderedProminent)
+            .disabled(!canSave)
         }
       }
-
-      Section("Name") {
-        TextField("Name", text: $name, prompt: Text("Work VPN"))
-      }
-
-      Section("Connection") {
-        fields
-      }
-
-      Section {
-        TextField("Check these hosts", text: $destinations, prompt: Text("gitlab.example.com, 10.0.0.5:22"))
-      } header: {
-        Text("Reachable")
-      } footer: {
-        Text("Once connected, Peony checks these hosts so you know your services are actually reachable. Port 443 unless you add one.")
-      }
-
-      if let error {
-        Section { Text(error).foregroundStyle(Brand.warning) }
-      }
-    }
-    .formStyle(.grouped)
-    .navigationTitle(original == nil ? "Add VPN" : name.isEmpty ? "VPN" : name)
-    .navigationSubtitle(original == nil ? "" : choice.title)
-    .toolbar {
-      // Delete is a quiet icon in its own group, away from Save, so the two can't be mistaken.
-      if original != nil {
-        ToolbarItem(placement: .primaryAction) {
-          Button("Delete", systemImage: "trash", role: .destructive) { confirmingDelete = true }
-            .help("Delete this VPN")
-        }
-        if #available(macOS 26, *) {
-          ToolbarSpacer(.fixed, placement: .primaryAction)
-        }
-      }
-      ToolbarItem(placement: .primaryAction) {
-        Button("Save", action: save)
+      // Command-S saves too. A button holds one shortcut, and Return already belongs to Save.
+      .background {
+        Button("Save") { if canSave { save(draft) } }
           .keyboardShortcut("s")
-          .buttonStyle(.borderedProminent)
+          .opacity(0)
+          .accessibilityHidden(true)
       }
-    }
-    .confirmationDialog("Delete \(name)?", isPresented: $confirmingDelete) {
-      Button("Delete", role: .destructive) {
-        guard let original else { return }
-        if model.connection.profileID == original.id { model.disconnect() }
-        model.store.delete(original.id)
-        model.settingsSelection = .general
+      .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+        toolsChecked += 1
       }
-    } message: {
-      Text("Peony also removes its saved password from the Keychain.")
-    }
   }
 
-  @ViewBuilder private var fields: some View {
-    switch choice {
-    case .forti:
-      TextField("Server", text: $forti.host, prompt: Text("vpn.example.com"))
-      TextField("Port", value: $forti.port, format: .number.grouping(.never))
-      Picker("Sign in", selection: $fortiLogin) {
-        ForEach(FortiLoginChoice.allCases) { Text($0.title).tag($0) }
-      }
-      switch fortiLogin {
-      case .password:
-        TextField("Username", text: $fortiUsername)
-        SecureField("Password", text: $secret, prompt: Text(passwordPrompt))
-      case .browser:
-        Text("Peony opens the sign-in page when you connect.")
-          .foregroundStyle(Brand.muted)
-      }
-      TextField("Trusted certificate", text: Binding(
-        get: { forti.trustedCert ?? "" }, set: { forti.trustedCert = $0.isEmpty ? nil : $0 }),
-        prompt: Text("Optional SHA-256, for self-signed gateways"))
-      TextField("Realm", text: Binding(
-        get: { forti.realm ?? "" }, set: { forti.realm = $0.isEmpty ? nil : $0 }),
-        prompt: Text("Optional"))
-
-    case .openConnect:
-      Picker("Protocol", selection: $openConnect.serverProtocol) {
-        ForEach(Profile.OpenConnect.ServerProtocol.allCases, id: \.self) { Text($0.title).tag($0) }
-      }
-      TextField("Server", text: $openConnect.server, prompt: Text("vpn.example.com or https://vpn.example.com/group"))
-      TextField("Username", text: $openConnect.username)
-      SecureField("Password", text: $secret, prompt: Text(passwordPrompt))
-      TextField("Server certificate", text: Binding(
-        get: { openConnect.serverCert ?? "" }, set: { openConnect.serverCert = $0.isEmpty ? nil : $0 }),
-        prompt: Text("Optional pin-sha256:…"))
-
-    case .openVPN:
-      configEditor(fileExtensions: ["ovpn", "conf"], footnote: "Stored in your Keychain. OpenVPN runs as root, so scripts, plugins and paths to other files aren't allowed. Keep certificates and keys inline.")
-      TextField("Username", text: $openVPN.username, prompt: Text("Leave empty if you only sign in with a certificate"))
-      SecureField("Password", text: $openVPNPassword, prompt: Text(openVPN.username.isEmpty ? "Not needed without a username" : passwordPrompt))
-        .disabled(openVPN.username.isEmpty)
-
-    case .wireGuard:
-      TextField("Interface", text: $wireGuard.interfaceName, prompt: Text("peony0"))
-      configEditor(fileExtensions: ["conf"], footnote: "Stored in your Keychain. PostUp and PreDown lines aren't allowed, since they'd run as root.")
-
-    case .netBird:
-      TextField("Management URL", text: $netBird.managementURL, prompt: Text("Leave empty for NetBird Cloud"))
-      Text("The first time, NetBird opens your browser to sign in.")
-        .foregroundStyle(Brand.muted)
-
-    case .tailscale:
-      Text("Sign in from the Tailscale app first. Peony turns it on and off; accounts and exit nodes stay in Tailscale.")
-        .foregroundStyle(Brand.muted)
-    }
+  /// Read on each render, and `toolsChecked` re-renders when you come back from Terminal.
+  private func missingTool(_ type: VPNType) -> (name: String, install: String)? {
+    _ = toolsChecked
+    return AppTools.find(type.tool.name) == nil ? type.tool : nil
   }
 
-  private var passwordPrompt: String {
-    (choice == .openVPN ? hasSavedOpenVPNPassword : hasSavedSecret) ? "Saved in Keychain. Type to replace." : "Required"
-  }
-
-  /// A pasted or imported config, which is saved to the Keychain whole.
-  private func configEditor(fileExtensions: [String], footnote: String) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack {
-        Text("Configuration")
-        Spacer()
-        Button("Import .\(fileExtensions[0])…") { importConfig(fileExtensions) }
-      }
-      if hasSavedSecret && secret.isEmpty {
-        Text("A configuration is saved in your Keychain. Paste or import a new one to replace it.")
-          .font(.caption)
-          .foregroundStyle(Brand.muted)
-      }
-      TextEditor(text: $secret)
-        .font(.system(.callout, design: .monospaced))
-        .frame(minHeight: 140)
-        .scrollContentBackground(.hidden)
-        .background(Brand.chip, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-      Text(footnote)
-        .font(.caption)
-        .foregroundStyle(Brand.muted)
-    }
-  }
-
-  private func importConfig(_ fileExtensions: [String]) {
-    let panel = NSOpenPanel()
-    panel.allowedContentTypes = fileExtensions.compactMap { UTType(filenameExtension: $0) } + [.plainText]
-    guard panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) else { return }
-    secret = text
-    if name.isEmpty { name = url.deletingPathExtension().lastPathComponent }
-  }
-
-  private func save() {
+  private func save(_ draft: ProfileDraft) {
+    guard let saved = draft.saved(id: profile.id) else { return }
     do {
-      let profile = try buildProfile()
-      let savesSecret = !secret.isEmpty && !(choice == .forti && fortiLogin == .browser)
-      try model.store.save(profile, secret: savesSecret ? secret : nil, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
-      model.settingsSelection = .profile(profile.id)
-      error = nil
-    } catch let failure as Validation.Failure {
-      error = failure.description
-    } catch let problem as WireGuardConfig.Problem {
-      error = problem.description
-    } catch let problem as OpenVPNConfig.Problem {
-      error = problem.description
+      try model.save(saved)
+      saveError = nil
     } catch {
-      self.error = error.localizedDescription
+      saveError = "Couldn't save to the Keychain: \(error.localizedDescription)"
     }
   }
+}
 
-  private func buildProfile() throws -> Profile {
-    let trimmedName = name.trimmingCharacters(in: .whitespaces)
-    guard !trimmedName.isEmpty else { throw Validation.Failure.invalid(field: "Name", reason: "is empty") }
-    let kind: Profile.Kind
-    switch choice {
-    case .forti:
-      var settings = forti
-      settings.host = try Validation.host(settings.host)
-      settings.port = try Validation.port(settings.port)
-      switch fortiLogin {
-      case .password: settings.login = .password(username: try Validation.secretLine(fortiUsername, field: "Username"))
-      case .browser: settings.login = .browser
-      }
-      if let cert = settings.trustedCert { settings.trustedCert = try Validation.sha256Digest(cert) }
-      kind = .forti(settings)
-    case .openConnect:
-      var settings = openConnect
-      settings.server = try Validation.server(settings.server)
-      settings.username = try Validation.secretLine(settings.username, field: "Username")
-      if let cert = settings.serverCert { settings.serverCert = try Validation.serverCertPin(cert) }
-      kind = .openConnect(settings)
-    case .openVPN:
-      var settings = openVPN
-      settings.username = try Validation.secretLine(settings.username, field: "Username", allowEmpty: true)
-      if !secret.isEmpty || !hasSavedSecret {
-        let config = try OpenVPNConfig(validating: secret)
-        secret = config.text
-        settings.server = config.server
-      }
-      kind = .openVPN(settings)
-    case .wireGuard:
-      var settings = wireGuard
-      settings.interfaceName = try Validation.interfaceName(settings.interfaceName)
-      if !secret.isEmpty || !hasSavedSecret { secret = try WireGuardConfig.validate(secret) }
-      kind = .wireGuard(settings)
-    case .netBird:
-      var settings = netBird
-      if !settings.managementURL.isEmpty { settings.managementURL = try Validation.server(settings.managementURL, field: "Management URL") }
-      kind = .netBird(settings)
-    case .tailscale:
-      kind = .tailscale
+private struct AddVPN: View {
+  let model: AppModel
+
+  @State private var draft = ProfileDraft()
+  @State private var saveError: String?
+
+  var body: some View {
+    AddVPNSheet(
+      draft: $draft,
+      missingTool: AppTools.find(draft.type.tool.name) == nil ? draft.type.tool : nil,
+      saveError: saveError,
+      installTool: { Terminal.run(draft.type.tool.install) },
+      cancel: { model.isAddingVPN = false },
+      add: add)
+  }
+
+  private func add() {
+    guard let saved = draft.saved(id: UUID()) else { return }
+    do {
+      try model.save(saved)
+      model.settingsSelection = .profile(saved.profile.id)
+      model.isAddingVPN = false
+    } catch {
+      saveError = "Couldn't save to the Keychain: \(error.localizedDescription)"
     }
-    let hosts = destinations.split(whereSeparator: { $0 == "," || $0 == " " || $0 == "\n" }).map(String.init)
-    for host in hosts where Probe.Target(host) == nil {
-      throw Validation.Failure.invalid(field: "Reachable", reason: "\(host) isn't host or host:port")
+  }
+}
+
+/// Dims the window's minimize and zoom buttons, as macOS settings windows do.
+private struct SettingsWindowButtons: NSViewRepresentable {
+  func makeNSView(context: Context) -> ButtonsView { ButtonsView() }
+  func updateNSView(_ nsView: ButtonsView, context: Context) { nsView.dim() }
+
+  final class ButtonsView: NSView {
+    override func viewDidMoveToWindow() {
+      super.viewDidMoveToWindow()
+      dim()
     }
-    return Profile(id: original?.id ?? UUID(), name: trimmedName, kind: kind, destinations: hosts)
+
+    func dim() {
+      window?.standardWindowButton(.miniaturizeButton)?.isEnabled = false
+      window?.standardWindowButton(.zoomButton)?.isEnabled = false
+    }
   }
 }

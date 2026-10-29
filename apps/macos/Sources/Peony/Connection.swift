@@ -161,14 +161,7 @@ final class Connection {
 
   /// Catches what would otherwise fail deep inside a root process, with a fix the user can act on.
   private func preflight(_ profile: Profile) async -> TunnelFailure? {
-    let tool: (name: String, install: String) = switch profile.kind {
-    case .forti: ("openfortivpn", "brew install openfortivpn")
-    case .openConnect: ("openconnect", "brew install openconnect")
-    case .wireGuard: ("wg-quick", "brew install wireguard-tools")
-    case .openVPN: ("openvpn", "brew install openvpn")
-    case .netBird: ("netbird", "brew install netbirdio/tap/netbird")
-    case .tailscale: ("tailscale", "brew install --cask tailscale-app")
-    }
+    let tool = VPNType(profile.kind).tool
     if AppTools.find(tool.name) == nil {
       return TunnelFailure(
         message: "\(profile.kindTitle) needs \(tool.name), which isn't installed yet.",

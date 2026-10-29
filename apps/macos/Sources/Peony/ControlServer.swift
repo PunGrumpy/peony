@@ -41,7 +41,12 @@ final class ControlServer {
     listener = nil
   }
 
+  /// The UserDefaults key behind Settings › Agents › "Let agents control Peony". Read on every
+  /// request, so turning it off, in Settings or with `defaults write`, applies to the next one.
+  static let enabledKey = "agentControl"
+
   private func handle(_ request: ControlRequest) async -> ControlReply {
+    guard UserDefaults.standard.bool(forKey: Self.enabledKey) else { return .refused(.disabled) }
     switch request {
     case .status:
       return .answered(.done, snapshot)

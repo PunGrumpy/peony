@@ -1,9 +1,10 @@
-// Renders every panel state, in light and dark, so design changes can be reviewed
-// without launching the app or connecting anything.
+// Renders every panel state and Settings pane, in light and dark, so design changes can be
+// reviewed without launching the app or connecting anything.
 //
-//   peony-snapshots panels <dir>   every panel state, light and dark
+//   peony-snapshots panels <dir>   every panel state and Settings pane, light and dark
 //   peony-snapshots icon <dir>     AppIcon.iconset and a 1024px preview
 import AppKit
+import PeonyCore
 import PeonyUI
 import SwiftUI
 
@@ -135,4 +136,69 @@ for dark in [false, true] {
   render(bar.foregroundStyle(dark ? .white : .black).background(dark ? Color(white: 0.16) : Color(white: 0.93)),
          dark: dark, to: output.appending(path: "menubar-\(dark ? "dark" : "light").png"))
 }
-print("Wrote \(states.count * 2 + 2) snapshots to \(output.path)")
+// Settings panes. Forms are AppKit controls, which ImageRenderer can't draw, so these go
+// through a window that never comes on screen.
+@MainActor func renderInWindow(_ view: some View, size: CGSize, dark: Bool, to url: URL) {
+  let host = NSHostingView(rootView: view)
+  let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+  window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+  window.contentView = host
+  // A turn of the run loop lets the form lay out and its fields load their values.
+  RunLoop.main.run(until: .now + 0.3)
+  host.layoutSubtreeIfNeeded()
+  guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { fatalError("Couldn't render \(url.lastPathComponent)") }
+  host.cacheDisplay(in: host.bounds, to: bitmap)
+  try! bitmap.representation(using: .png, properties: [:])!.write(to: url)
+}
+
+_ = NSApplication.shared
+let cli = "/Applications/Peony.app/Contents/Helpers/peony"
+let office = Profile(
+  name: "Office",
+  kind: .forti(.init(host: "vpn.acme.co", login: .password(username: "alex"))),
+  destinations: ["gitlab.acme.co", "10.11.219.9:22"])
+var broken = ProfileDraft(office, hasSavedSecret: true)
+broken.forti.host = "vpn acme co"
+broken.forti.port = 0
+broken.fortiUsername = ""
+broken.forti.trustedCert = "a1b2c3"
+broken.hosts = "gitlab.acme.co, :22"
+var newForti = ProfileDraft()
+newForti.name = "Office"
+newForti.forti.host = "https://vpn.acme.co"
+var newWireGuard = ProfileDraft()
+newWireGuard.type = .wireGuard
+newWireGuard.name = "Home"
+newWireGuard.secret = "[Interface]\nPrivateKey = …\nPostUp = ./route.sh\n\n[Peer]\nPublicKey = …\n"
+let deletion = ProfileForm.Deletion(name: "Office", isConnected: false, perform: {})
+
+let panes: [(String, CGSize, AnyView)] = [
+  ("general", CGSize(width: 540, height: 300), AnyView(GeneralPane(helper: .installed, opensAtLogin: true))),
+  ("general-notices", CGSize(width: 540, height: 340), AnyView(GeneralPane(
+    helper: .missing, helperNotice: "The administrator didn't approve the helper.", opensAtLogin: false,
+    loginNotice: "macOS didn't allow opening at login. Move Peony to Applications and try again."))),
+  ("agents", CGSize(width: 540, height: 380), AnyView(AgentsPane(
+    isEnabled: .constant(true),
+    rows: [
+      .init(agent: .claudeCode, isInstalled: true, install: AgentSetup.install(.claudeCode, cli: cli)),
+      .init(agent: .codex, isInstalled: false, install: AgentSetup.install(.codex, cli: cli)),
+      .init(agent: .cursor, isInstalled: true, install: AgentSetup.install(.cursor, cli: cli)),
+    ]))),
+  ("edit", CGSize(width: 540, height: 640), AnyView(ProfileForm(
+    draft: .constant(ProfileDraft(office, hasSavedSecret: true)), isNew: false, revealsAllProblems: true,
+    missingTool: nil, deletion: deletion))),
+  ("edit-errors", CGSize(width: 540, height: 820), AnyView(ProfileForm(
+    draft: .constant(broken), isNew: false, revealsAllProblems: true, missingTool: nil, deletion: deletion))),
+  ("add", CGSize(width: 500, height: 480), AnyView(AddVPNSheet(draft: .constant(ProfileDraft()), missingTool: nil))),
+  ("add-errors", CGSize(width: 500, height: 480), AnyView(AddVPNSheet(
+    draft: .constant(newForti), revealsAllProblems: true, missingTool: VPNType.forti.tool))),
+  // The sheet's form on its own, tall enough to show the configuration editor.
+  ("add-config-errors", CGSize(width: 500, height: 760), AnyView(ProfileForm(
+    draft: .constant(newWireGuard), isNew: true, revealsAllProblems: true, missingTool: VPNType.wireGuard.tool))),
+]
+for (name, size, view) in panes {
+  for dark in [false, true] {
+    renderInWindow(view, size: size, dark: dark, to: output.appending(path: "settings-\(name)-\(dark ? "dark" : "light").png"))
+  }
+}
+print("Wrote \((states.count + panes.count) * 2 + 2) snapshots to \(output.path)")
