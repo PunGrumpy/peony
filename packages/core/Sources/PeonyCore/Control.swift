@@ -280,16 +280,17 @@ public enum ControlPolicy {
   }
 
   /// Repeating a request never restarts a tunnel: connecting the VPN that's already on or coming up,
-  /// or disconnecting when nothing is up, only waits.
+  /// or disconnecting when nothing is up, only waits. Disconnecting a failed tunnel clears it to off,
+  /// so the next `status` doesn't still report the failure.
   public static func plan(_ goal: Goal, _ tunnel: ControlSnapshot.Tunnel) -> Plan {
     switch (goal, tunnel) {
     case (.up(let id), .on(let vpn, _, _, _)) where vpn.id == id: tunnel.isSettled ? .done : .join
     case (.up(let id), .connecting(let vpn, _)) where vpn.id == id: .join
     case (.up, .disconnecting): .waitForOff
     case (.up, _): .start
-    case (.down, .off), (.down, .failed): .done
+    case (.down, .off): .done
     case (.down, .disconnecting): .join
-    case (.down, .connecting), (.down, .on): .start
+    case (.down, .connecting), (.down, .on), (.down, .failed): .start
     }
   }
 

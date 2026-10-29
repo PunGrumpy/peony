@@ -275,9 +275,9 @@ struct ControlTests {
     #expect(ControlPolicy.plan(up, .disconnecting(Self.officeRef)) == .waitForOff)
   }
 
-  @Test func `disconnecting acts only on a tunnel that's up or coming up`() {
+  @Test func `disconnecting acts on any tunnel that isn't already off`() {
     #expect(ControlPolicy.plan(.down, .off) == .done)
-    #expect(ControlPolicy.plan(.down, Self.officeFailed) == .done)
+    #expect(ControlPolicy.plan(.down, Self.officeFailed) == .start)
     #expect(ControlPolicy.plan(.down, .disconnecting(Self.officeRef)) == .join)
     #expect(ControlPolicy.plan(.down, Self.checked) == .start)
     #expect(ControlPolicy.plan(.down, .connecting(Self.officeRef, signingIn: true)) == .start)
