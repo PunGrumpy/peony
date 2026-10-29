@@ -27,7 +27,7 @@ struct PeonyApp: App {
     }
     .windowToolbarStyle(.unified)
     .windowResizability(.contentMinSize)
-    .defaultSize(width: 760, height: 540)
+    .defaultSize(width: 760, height: 600)
 
     Window("Peony Log", id: LogView.windowID) {
       LogView(lines: delegate.model.connection.log)

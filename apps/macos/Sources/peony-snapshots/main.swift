@@ -189,8 +189,8 @@ let panes: [(String, CGSize, AnyView)] = [
     missingTool: nil, deletion: deletion))),
   ("edit-errors", CGSize(width: 540, height: 820), AnyView(ProfileForm(
     draft: .constant(broken), isNew: false, revealsAllProblems: true, missingTool: nil, deletion: deletion))),
-  ("add", CGSize(width: 500, height: 520), AnyView(AddVPNSheet(draft: .constant(ProfileDraft()), missingTool: nil))),
-  ("add-errors", CGSize(width: 500, height: 520), AnyView(AddVPNSheet(
+  ("add", CGSize(width: 500, height: 480), AnyView(AddVPNSheet(draft: .constant(ProfileDraft()), missingTool: nil))),
+  ("add-errors", CGSize(width: 500, height: 480), AnyView(AddVPNSheet(
     draft: .constant(newForti), revealsAllProblems: true, missingTool: VPNType.forti.tool))),
   // The sheet's form on its own, tall enough to show the configuration editor.
   ("add-config-errors", CGSize(width: 500, height: 760), AnyView(ProfileForm(

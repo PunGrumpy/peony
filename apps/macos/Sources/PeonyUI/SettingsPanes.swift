@@ -202,6 +202,6 @@ public struct AddVPNSheet: View {
       }
       .padding(16)
     }
-    .frame(width: 500, height: 520)
+    .frame(width: 500, height: 480)
   }
 }

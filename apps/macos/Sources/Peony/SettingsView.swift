@@ -26,19 +26,18 @@ struct SettingsView: View {
               .tag(SettingsSelection.profile(profile.id))
           }
           .onMove { model.store.move(from: $0, to: $1) }
-          if model.store.profiles.isEmpty {
-            Text("No VPNs yet").foregroundStyle(.secondary)
+          // A button beside the list it adds to, not a row to select: it opens a sheet.
+          Button {
+            model.isAddingVPN = true
+          } label: {
+            Label("Add VPN…", systemImage: "plus")
           }
+          .buttonStyle(.borderless)
+          .keyboardShortcut("n")
+          .help("Add a VPN")
         }
       }
       .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 260)
-      .toolbar {
-        ToolbarItem {
-          Button("Add VPN", systemImage: "plus") { model.isAddingVPN = true }
-            .help("Add a VPN")
-            .keyboardShortcut("n")
-        }
-      }
     } detail: {
       switch model.settingsSelection {
       case .general, nil:
@@ -54,7 +53,7 @@ struct SettingsView: View {
         }
       }
     }
-    .frame(minWidth: 680, minHeight: 480)
+    .frame(minWidth: 680, minHeight: 540)
     .sheet(isPresented: $model.isAddingVPN) {
       AddVPN(model: model)
     }
