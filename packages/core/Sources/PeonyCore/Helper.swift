@@ -8,7 +8,7 @@ import Foundation
 /// for longer than the tunnel takes to read them.
 public enum Helper {
   /// Bump whenever the helper's behaviour changes; the app reinstalls on mismatch.
-  public static let version = "2"
+  public static let version = "4"
   public static let installedPath = "/Library/PrivilegedHelperTools/app.peony.helper"
   public static let sudoersPath = "/etc/sudoers.d/peony"
   /// Root-only scratch space for generated configs.
@@ -27,16 +27,20 @@ public enum HelperRequest: Codable, Equatable, Sendable {
   public struct FortiRequest: Codable, Equatable, Sendable {
     public var host: String
     public var port: Int
-    public var username: String
-    public var password: String
+    public var credential: Credential
     public var trustedCert: String?
     public var realm: String?
 
-    public init(host: String, port: Int, username: String, password: String, trustedCert: String?, realm: String?) {
+    public enum Credential: Codable, Equatable, Sendable {
+      case password(username: String, password: String)
+      /// The `SVPNCOOKIE` a browser sign-in produced, used in place of a username and password.
+      case cookie(String)
+    }
+
+    public init(host: String, port: Int, credential: Credential, trustedCert: String?, realm: String?) {
       self.host = host
       self.port = port
-      self.username = username
-      self.password = password
+      self.credential = credential
       self.trustedCert = trustedCert
       self.realm = realm
     }
@@ -46,9 +50,11 @@ public enum HelperRequest: Codable, Equatable, Sendable {
       var lines = [
         "host = \(try Validation.host(host))",
         "port = \(try Validation.port(port))",
-        "username = \(try Validation.secretLine(username, field: "Username"))",
-        "password = \(try Validation.secretLine(password, field: "Password"))",
       ]
+      if case .password(let username, let password) = credential {
+        lines.append("username = \(try Validation.secretLine(username, field: "Username"))")
+        lines.append("password = \(try Validation.secretLine(password, field: "Password"))")
+      }
       if let trustedCert, !trustedCert.isEmpty {
         lines.append("trusted-cert = \(try Validation.sha256Digest(trustedCert))")
       }
@@ -56,6 +62,17 @@ public enum HelperRequest: Codable, Equatable, Sendable {
         lines.append("realm = \(try Validation.secretLine(realm, field: "Realm"))")
       }
       return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Validated arguments for openfortivpn, and what to write to its stdin. A cookie goes there, never in argv.
+    public func invocation(configPath: String) throws(Validation.Failure) -> (arguments: [String], stdin: String?) {
+      switch credential {
+      case .password:
+        return (["-c", configPath], nil)
+      case .cookie(let cookie):
+        let value = try Validation.fortiCookie(cookie)
+        return (["-c", configPath, "--cookie-on-stdin"], "SVPNCOOKIE=\(value)")
+      }
     }
   }
 

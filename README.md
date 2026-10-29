@@ -35,7 +35,7 @@ Peony drives the open-source clients, so install the ones your VPNs need:
 2. Pick the kind, fill in what your admin gave you, and list a few hosts to check.
 3. Click a route, or press <kbd>⌘1</kbd>–<kbd>⌘9</kbd>. Peony turns any other VPN off first.
 
-The first connection asks for an admin password once, to install the helper.
+The first connection asks for an admin password once, to install the helper. A FortiGate that signs in with single sign-on, such as Microsoft Entra, works too: choose **Browser (SSO)** and Peony opens the sign-in page in its own window.
 
 ## How it works, and what runs as root
 

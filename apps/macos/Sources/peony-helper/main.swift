@@ -92,8 +92,13 @@ func handle(_ request: HelperRequest) -> Never {
     let config: String
     do { config = try forti.configFile() } catch { fail(error.description) }
     let path = writePrivate(config, name: "forti.conf")
+    let invocation: (arguments: [String], stdin: String?)
+    do { invocation = try forti.invocation(configPath: path) } catch {
+      unlink(path)
+      fail(error.description)
+    }
     // openfortivpn reads its config at startup, so the password only lives on disk briefly.
-    supervise(tool("openfortivpn"), ["-c", path], afterLaunch: { unlink(path) })
+    supervise(tool("openfortivpn"), invocation.arguments, stdin: invocation.stdin, afterLaunch: { unlink(path) })
 
   case .openConnect(let request):
     let arguments: [String]

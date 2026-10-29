@@ -186,6 +186,18 @@ private enum KindChoice: String, CaseIterable, Identifiable {
   }
 }
 
+private enum FortiLoginChoice: String, CaseIterable, Identifiable {
+  case password, browser
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .password: "Password"
+    case .browser: "Browser (SSO)"
+    }
+  }
+}
+
 private struct ProfileEditor: View {
   let model: AppModel
   let original: Profile?
@@ -195,6 +207,8 @@ private struct ProfileEditor: View {
   @State private var name: String
   @State private var choice: KindChoice
   @State private var forti: Profile.Forti
+  @State private var fortiLogin: FortiLoginChoice
+  @State private var fortiUsername: String
   @State private var openConnect: Profile.OpenConnect
   @State private var wireGuard: Profile.WireGuard
   @State private var openVPN: Profile.OpenVPN
@@ -211,7 +225,16 @@ private struct ProfileEditor: View {
     let kind = profile?.kind ?? .forti(.init())
     _name = State(initialValue: profile?.name ?? "")
     _choice = State(initialValue: KindChoice(kind))
-    if case .forti(let settings) = kind { _forti = State(initialValue: settings) } else { _forti = State(initialValue: .init()) }
+    let fortiSettings: Profile.Forti = if case .forti(let settings) = kind { settings } else { .init() }
+    _forti = State(initialValue: fortiSettings)
+    switch fortiSettings.login {
+    case .password(let username):
+      _fortiLogin = State(initialValue: .password)
+      _fortiUsername = State(initialValue: username)
+    case .browser:
+      _fortiLogin = State(initialValue: .browser)
+      _fortiUsername = State(initialValue: "")
+    }
     if case .openConnect(let settings) = kind { _openConnect = State(initialValue: settings) } else { _openConnect = State(initialValue: .init()) }
     if case .wireGuard(let settings) = kind { _wireGuard = State(initialValue: settings) } else { _wireGuard = State(initialValue: .init()) }
     if case .openVPN(let settings) = kind { _openVPN = State(initialValue: settings) } else { _openVPN = State(initialValue: .init()) }
@@ -296,8 +319,17 @@ private struct ProfileEditor: View {
     case .forti:
       TextField("Server", text: $forti.host, prompt: Text("vpn.example.com"))
       TextField("Port", value: $forti.port, format: .number.grouping(.never))
-      TextField("Username", text: $forti.username)
-      SecureField("Password", text: $secret, prompt: Text(passwordPrompt))
+      Picker("Sign in", selection: $fortiLogin) {
+        ForEach(FortiLoginChoice.allCases) { Text($0.title).tag($0) }
+      }
+      switch fortiLogin {
+      case .password:
+        TextField("Username", text: $fortiUsername)
+        SecureField("Password", text: $secret, prompt: Text(passwordPrompt))
+      case .browser:
+        Text("Peony opens the sign-in page when you connect.")
+          .foregroundStyle(Brand.muted)
+      }
       TextField("Trusted certificate", text: Binding(
         get: { forti.trustedCert ?? "" }, set: { forti.trustedCert = $0.isEmpty ? nil : $0 }),
         prompt: Text("Optional SHA-256, for self-signed gateways"))
@@ -376,7 +408,8 @@ private struct ProfileEditor: View {
   private func save() {
     do {
       let profile = try buildProfile()
-      try model.store.save(profile, secret: secret.isEmpty ? nil : secret, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
+      let savesSecret = !secret.isEmpty && !(choice == .forti && fortiLogin == .browser)
+      try model.store.save(profile, secret: savesSecret ? secret : nil, openVPNPassword: openVPNPassword.isEmpty ? nil : openVPNPassword)
       model.settingsSelection = .profile(profile.id)
       error = nil
     } catch let failure as Validation.Failure {
@@ -399,7 +432,10 @@ private struct ProfileEditor: View {
       var settings = forti
       settings.host = try Validation.host(settings.host)
       settings.port = try Validation.port(settings.port)
-      settings.username = try Validation.secretLine(settings.username, field: "Username")
+      switch fortiLogin {
+      case .password: settings.login = .password(username: try Validation.secretLine(fortiUsername, field: "Username"))
+      case .browser: settings.login = .browser
+      }
       if let cert = settings.trustedCert { settings.trustedCert = try Validation.sha256Digest(cert) }
       kind = .forti(settings)
     case .openConnect:
