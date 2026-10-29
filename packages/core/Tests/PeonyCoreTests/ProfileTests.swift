@@ -44,6 +44,13 @@ struct ProfileTests {
     #expect(!decoded.needsPassword)
   }
 
+  @Test func `the SAML start URL carries the port and realm only when set`() {
+    #expect(Profile.Forti(host: "vpn.example.com", login: .browser).samlStartURL?.absoluteString == "https://vpn.example.com/remote/saml/start")
+    #expect(Profile.Forti(host: "vpn.example.com", port: 8443, login: .browser, realm: "corp team").samlStartURL?.absoluteString
+      == "https://vpn.example.com:8443/remote/saml/start?realm=corp%20team")
+    #expect(Profile.Forti(host: "vpn.example.com", login: .browser, realm: "").samlStartURL?.query == nil)
+  }
+
   @Test func `a login with neither login nor username is refused`() {
     let broken = #"{"host":"vpn.example.com","port":443}"#
     #expect(throws: DecodingError.self) { try JSONDecoder().decode(Profile.Forti.self, from: Data(broken.utf8)) }

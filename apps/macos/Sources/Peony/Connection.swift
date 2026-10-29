@@ -25,12 +25,17 @@ final class Connection {
   @ObservationIgnored private var pendingText = ""
   @ObservationIgnored private var nextLogID = 0
   @ObservationIgnored private var fortiParser = FortiLogParser()
+  @ObservationIgnored private let browser = BrowserSignIn()
   @ObservationIgnored private var openVPNParser = OpenVPNLogParser()
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "connection")
 
   // MARK: Connect
 
   func connect(_ profile: Profile) async {
+    if state == .connecting, profileID == profile.id, browser.isOpen {
+      browser.focus()
+      return
+    }
     if profileID != nil, state != .off {
       await disconnect()
     }
@@ -74,11 +79,27 @@ final class Connection {
 
     switch profile.kind {
     case .forti(let settings):
-      let request = HelperRequest.forti(.init(
-        host: settings.host, port: settings.port, username: settings.username,
-        password: secret,
-        trustedCert: settings.trustedCert, realm: settings.realm))
-      launchHelper(request)
+      let credential: HelperRequest.FortiRequest.Credential
+      switch settings.login {
+      case .password(let username):
+        credential = .password(username: username, password: secret)
+      case .browser:
+        guard let url = settings.samlStartURL else {
+          state = .failed(TunnelFailure(message: "\(profile.name)'s server address isn't valid.", fix: .editProfile))
+          return
+        }
+        let cookie = await browser.cookie(from: url, host: settings.host)
+        guard attempt == current, state == .connecting else { return }
+        // Closing the window is a cancel, not a failure.
+        guard let cookie else {
+          finish()
+          return
+        }
+        credential = .cookie(cookie)
+      }
+      launchHelper(.forti(.init(
+        host: settings.host, port: settings.port, credential: credential,
+        trustedCert: settings.trustedCert, realm: settings.realm)))
 
     case .openConnect(let settings):
       let request = HelperRequest.openConnect(.init(
@@ -222,6 +243,7 @@ final class Connection {
   // MARK: Disconnect
 
   func disconnect() async {
+    browser.cancel()
     guard state != .off, let kind else {
       state = .off
       return
@@ -366,7 +388,10 @@ final class Connection {
     case .tunnelUp:
       markUp()
     case .authenticationFailed:
-      failure = TunnelFailure(message: "The server rejected the username or password.", fix: .editProfile)
+      let usesBrowser = if case .forti(let settings) = kind, case .browser = settings.login { true } else { false }
+      failure = TunnelFailure(
+        message: usesBrowser ? "The server didn't accept the browser sign-in. Try connecting again." : "The server rejected the username or password.",
+        fix: usesBrowser ? nil : .editProfile)
     case .certificateRejected(let pin):
       failure = TunnelFailure(
         message: "The server's certificate isn't trusted. If your admin confirms it, Peony can trust it for this VPN.",

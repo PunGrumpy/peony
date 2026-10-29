@@ -52,6 +52,17 @@ public struct Profile: Codable, Hashable, Identifiable, Sendable {
       case browser
     }
 
+    /// Where the gateway starts a SAML sign-in; nil if the host can't form a URL.
+    public var samlStartURL: URL? {
+      var components = URLComponents()
+      components.scheme = "https"
+      components.host = host
+      if port != 443 { components.port = port }
+      components.path = "/remote/saml/start"
+      if let realm, !realm.isEmpty { components.queryItems = [URLQueryItem(name: "realm", value: realm)] }
+      return components.url
+    }
+
     private enum CodingKeys: String, CodingKey {
       case host, port, login, trustedCert, realm
     }
