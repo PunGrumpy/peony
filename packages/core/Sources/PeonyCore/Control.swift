@@ -24,6 +24,13 @@ public enum Control {
     return try encoder.encode(value) + Data("\n".utf8)
   }
 
+  /// A reply as `peony --json` prints it, and as the MCP tools return it.
+  public static func envelope(_ reply: ControlReply) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+    return (try? encoder.encode(reply)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+  }
+
   /// The `version` a line of JSON claims, whatever else it holds.
   public static func version(of line: Data) -> Int? {
     struct Versioned: Decodable { var version: Int }
@@ -58,6 +65,14 @@ public enum ControlRequest: Equatable, Sendable {
   /// `vpn` is a VPN's name or id, matched by `ControlPolicy.resolve`.
   case connect(vpn: String, wait: WaitLimit)
   case disconnect(wait: WaitLimit)
+
+  /// Reading status never opens Peony; changing the tunnel does.
+  public var launchesApp: Bool {
+    switch self {
+    case .status: false
+    case .connect, .disconnect: true
+    }
+  }
 }
 
 /// Everything an agent can learn about Peony, as one value. The app builds it at the moment it replies.
