@@ -12,12 +12,15 @@ ARCHS=(${ARCHS:-arm64 x86_64})
 
 swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --product Peony
 swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --product peony-helper
+swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --product peony-cli
 BIN="$(swift build -c release $(printf -- '--arch %s ' "${ARCHS[@]}") --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
 cp "$BIN/Peony" "$APP/Contents/MacOS/Peony"
 cp "$BIN/peony-helper" "$APP/Contents/Helpers/peony-helper"
+# Helpers, not MacOS: there `peony` would collide with `Peony` on a case-insensitive disk.
+cp "$BIN/peony-cli" "$APP/Contents/Helpers/peony"
 # Outside Xcode, SwiftPM records the deployment target as the SDK. macOS reads that number to
 # pick the look, so Peony would get the old window chrome. Record the SDK it was built with.
 MINOS="$(vtool -arch arm64 -show-build "$APP/Contents/MacOS/Peony" | awk '/minos/ { print $2; exit }')"
@@ -32,7 +35,8 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # Without one the app is signed ad-hoc and opens after Gatekeeper's Open Anyway.
 codesign=(codesign --force --sign "${CODESIGN_IDENTITY:--}")
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then codesign+=(--options runtime --timestamp); fi
-# Sign the nested helper first, since signing the bundle seals its hash.
+# Sign the nested helpers first, since signing the bundle seals their hashes.
 "${codesign[@]}" "$APP/Contents/Helpers/peony-helper"
+"${codesign[@]}" "$APP/Contents/Helpers/peony"
 "${codesign[@]}" "$APP"
 echo "Built $APP ($VERSION)"

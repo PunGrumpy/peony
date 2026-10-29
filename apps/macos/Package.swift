@@ -17,6 +17,9 @@ let package = Package(
     .executableTarget(name: "Peony", dependencies: [core, "PeonyUI"], swiftSettings: mainActorByDefault),
     // The root helper. Foundation only; validates everything through PeonyCore.
     .executableTarget(name: "peony-helper", dependencies: [core]),
+    // `peony`, the command-line tool for scripts and agents. PeonyCore only: it asks the app, never
+    // the tunnel. Named so its product can't collide with `Peony` on a case-insensitive disk.
+    .executableTarget(name: "peony-cli", dependencies: [core]),
     // `bun run snapshots` renders every panel state to PNG for design review.
     .executableTarget(name: "peony-snapshots", dependencies: ["PeonyUI"], swiftSettings: mainActorByDefault),
   ]

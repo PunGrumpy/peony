@@ -15,6 +15,7 @@ cask "peony" do
   depends_on macos: :sonoma
 
   app "Peony.app"
+  binary "#{appdir}/Peony.app/Contents/Helpers/peony"
 
   uninstall quit:   "app.peony.Peony",
             delete: [
