@@ -37,6 +37,52 @@ Peony drives the open-source clients, so install the ones your VPNs need:
 
 The first connection asks for an admin password once, to install the helper. A FortiGate that signs in with single sign-on, such as Microsoft Entra, works too: choose **Browser (SSO)** and Peony opens the sign-in page in its own window.
 
+## Drive Peony from scripts and agents
+
+The cask puts `peony` on your `PATH`. Without Homebrew, run `/Applications/Peony.app/Contents/Helpers/peony`.
+
+```sh
+peony list                 # your VPNs, and which one is active
+peony status               # the tunnel: state, address, failure and its fix, host checks
+peony connect <name|id>    # turns any other VPN off, connects, waits until it's on or failed
+peony disconnect           # turns the active VPN off and waits until it's off
+```
+
+Add `--json` for one JSON object on stdout, the same shape for every command, and `--timeout <seconds>` to change how long `connect` (90 by default) or `disconnect` (30) waits. A name matches exactly, ignoring case; use the id when two VPNs share one. `connect` is done once the VPN is on and each host has been checked:
+
+```json
+{
+  "outcome": "done",
+  "tunnel": {
+    "address": "10.212.134.5",
+    "hosts": [
+      { "host": "git.example.com", "ms": 23, "status": "reachable" },
+      { "host": "wiki.example.com", "status": "unreachable" }
+    ],
+    "since": "2026-10-29T09:12:03Z",
+    "state": "on",
+    "vpn": { "id": "6F1C0E52-0B7D-4C1A-9E43-2B1D8A6E7F10", "name": "Office" }
+  },
+  "version": 1,
+  "vpns": [
+    { "active": true, "endpoint": "vpn.example.com", "hosts": ["git.example.com", "wiki.example.com"],
+      "id": "6F1C0E52-0B7D-4C1A-9E43-2B1D8A6E7F10", "kind": "forti", "name": "Office" }
+  ]
+}
+```
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Done: connected, disconnected, or status answered |
+| 1 | The VPN failed. `.tunnel.failure` says why, and `.fix.command` holds an install command when one would fix it |
+| 2 | Usage error |
+| 3 | Peony isn't available: not running (for `list` and `status`), didn't open, a different version, or a sandbox blocked the socket |
+| 4 | No VPN by that name, or more than one |
+| 5 | Timed out while the tunnel was still changing. `.tunnel.signingIn` is true when a browser sign-in is waiting on you |
+| 6 | Interrupted: someone else connected or disconnected, or the sign-in window was closed |
+
+`list` and `status` never open Peony. `connect` and `disconnect` open it if it isn't running. `peony` talks to the app over a socket only your account can use, at `~/Library/Application Support/Peony/control.sock`, and the app stays the only thing that starts or stops a tunnel. Passwords, certificate trust, the helper, the log and editing VPNs stay in Peony's window.
+
 ## How it works, and what runs as root
 
 Setting routes and DNS needs root. Peony installs a small helper and a sudoers rule that lets your account run it without a password. The helper:
@@ -68,7 +114,7 @@ Add `--filter=@peony/macos` or `--filter=web` to run a task for one of them.
 | Path | What |
 | --- | --- |
 | `packages/core` | Profiles, validation, log parsers and reachability, shared with the helper. Has the tests. |
-| `apps/macos` | The app, its panel views, the root helper, and the snapshot renderer. |
+| `apps/macos` | The app, its panel views, the root helper, the `peony` command, and the snapshot renderer. |
 | `apps/web` | The site. It shows the panel snapshots from `apps/macos/Design`. |
 
 Describe a change to the app with `bun changeset`. When changesets reach `main`, a workflow opens a "Version Packages" pull request; merging it bumps the version, tags it and publishes the `.dmg`, and [the tap](https://github.com/PunGrumpy/homebrew-tap) picks it up within the hour.
