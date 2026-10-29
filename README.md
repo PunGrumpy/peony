@@ -83,6 +83,23 @@ Add `--json` for one JSON object on stdout, the same shape for every command, an
 
 `list` and `status` never open Peony. `connect` and `disconnect` open it if it isn't running. `peony` talks to the app over a socket only your account can use, at `~/Library/Application Support/Peony/control.sock`, and the app stays the only thing that starts or stops a tunnel. Passwords, certificate trust, the helper, the log and editing VPNs stay in Peony's window.
 
+### Use Peony from an AI agent
+
+`peony mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server, so an agent lists Peony's tools next to its own instead of running shell commands. Add it once:
+
+```sh
+claude mcp add --scope user peony -- peony mcp    # Claude Code
+codex mcp add peony -- peony mcp                  # Codex
+```
+
+For Cursor, add this to `~/.cursor/mcp.json`:
+
+```json
+{ "mcpServers": { "peony": { "command": "/Applications/Peony.app/Contents/Helpers/peony", "args": ["mcp"] } } }
+```
+
+Use the full path wherever the agent doesn't start with your shell's `PATH`. The tools are `list_vpns`, `vpn_status`, `connect_vpn` and `disconnect_vpn`. They take the same arguments as the commands above and return the same JSON, with `isError` set whenever the command would exit non-zero. `vpn_status` and `list_vpns` never open Peony; `connect_vpn` and `disconnect_vpn` do.
+
 ## How it works, and what runs as root
 
 Setting routes and DNS needs root. Peony installs a small helper and a sudoers rule that lets your account run it without a password. The helper:
