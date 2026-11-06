@@ -257,9 +257,7 @@ final class AppModel {
 
   /// Decides like `peony connect` and `peony disconnect`, then acts exactly as a click would.
   private func pressed(_ shortcut: GlobalShortcut) {
-    guard globalShortcutsEnabled,
-      let goal = shortcut.action(among: store.profiles.map(\.id), tunnel: controlSnapshot.tunnel)
-    else { return }
+    guard let goal = shortcut.action(among: store.profiles.map(\.id), tunnel: controlSnapshot.tunnel) else { return }
     switch goal {
     case .up(let id): connect(id)
     case .down: disconnect()

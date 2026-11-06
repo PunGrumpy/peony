@@ -63,7 +63,7 @@ nonisolated final class GlobalShortcuts {
       if status == noErr, let hotKey {
         hotKeys.append(hotKey)
       } else {
-        logger.error("Couldn't register \(shortcut.title, privacy: .public): \(status)")
+        logger.error("Couldn't register the shortcut for \(shortcut.id): \(status)")
       }
     }
   }

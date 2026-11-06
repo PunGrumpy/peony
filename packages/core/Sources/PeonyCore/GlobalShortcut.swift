@@ -27,8 +27,6 @@ public enum GlobalShortcut: Equatable, Sendable {
     }
   }
 
-  public var title: String { "⌃⌥⌘\(id)" }
-
   /// What a press does, or nil when it should do nothing. It decides exactly as `peony connect` and
   /// `peony disconnect` do, so pressing a chord for the VPN that's already up never restarts it.
   public func action(among routes: [UUID], tunnel: ControlSnapshot.Tunnel) -> ControlPolicy.Goal? {

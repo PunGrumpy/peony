@@ -34,12 +34,6 @@ struct GlobalShortcutTests {
     #expect(Set(GlobalShortcut.all.map(\.id)).count == 10)
   }
 
-  @Test func `titles name the modifiers and the number`() {
-    #expect(GlobalShortcut.route(3).title == "⌃⌥⌘3")
-    #expect(GlobalShortcut.route(9).title == "⌃⌥⌘9")
-    #expect(GlobalShortcut.disconnect.title == "⌃⌥⌘0")
-  }
-
   // MARK: Actions
 
   @Test func `a route connects when nothing is on`() {
