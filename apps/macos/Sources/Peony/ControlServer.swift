@@ -108,19 +108,7 @@ final class ControlServer {
     }
   }
 
-  /// Built from the same live state the panel reads, at the moment of asking.
-  private var snapshot: ControlSnapshot {
-    let profiles = model.store.profiles
-    let connection = model.connection
-    let vpn = connection.profileID.map { id in
-      ControlSnapshot.VPNRef(id: id, name: profiles.first { $0.id == id }?.name ?? "Removed VPN")
-    }
-    return ControlSnapshot(
-      tunnel: ControlSnapshot.Tunnel(
-        connection.state, vpn: vpn, since: connection.since, signingIn: connection.isSigningIn,
-        destinations: model.destinations, timing: connection.timing),
-      vpns: profiles.map(ControlSnapshot.VPN.init))
-  }
+  private var snapshot: ControlSnapshot { model.controlSnapshot }
 
   private final class Flag {
     var value: Bool

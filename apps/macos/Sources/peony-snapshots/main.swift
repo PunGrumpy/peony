@@ -175,9 +175,10 @@ let deletion = ProfileForm.Deletion(name: "Office", isConnected: false, perform:
 
 let panes: [(String, CGSize, AnyView)] = [
   ("general", CGSize(width: 540, height: 300), AnyView(GeneralPane(helper: .installed, opensAtLogin: true))),
-  ("general-notices", CGSize(width: 540, height: 340), AnyView(GeneralPane(
+  ("general-notices", CGSize(width: 540, height: 420), AnyView(GeneralPane(
     helper: .missing, helperNotice: "The administrator didn't approve the helper.", opensAtLogin: false,
-    loginNotice: "macOS didn't allow opening at login. Move Peony to Applications and try again."))),
+    loginNotice: "macOS didn't allow opening at login. Move Peony to Applications and try again.",
+    globalShortcuts: true))),
   ("agents", CGSize(width: 540, height: 380), AnyView(AgentsPane(
     isEnabled: .constant(true),
     rows: [

@@ -13,23 +13,29 @@ public struct GeneralPane: View {
   let helperNotice: String?
   let opensAtLogin: Bool
   let loginNotice: String?
+  let globalShortcuts: Bool
   let installHelper: () -> Void
   let uninstallHelper: () -> Void
   let setOpensAtLogin: (Bool) -> Void
+  let setGlobalShortcuts: (Bool) -> Void
   let openLoginItems: () -> Void
 
   public init(
     helper: Helper, helperNotice: String? = nil, opensAtLogin: Bool, loginNotice: String? = nil,
+    globalShortcuts: Bool = false,
     installHelper: @escaping () -> Void = {}, uninstallHelper: @escaping () -> Void = {},
-    setOpensAtLogin: @escaping (Bool) -> Void = { _ in }, openLoginItems: @escaping () -> Void = {}
+    setOpensAtLogin: @escaping (Bool) -> Void = { _ in }, setGlobalShortcuts: @escaping (Bool) -> Void = { _ in },
+    openLoginItems: @escaping () -> Void = {}
   ) {
     self.helper = helper
     self.helperNotice = helperNotice
     self.opensAtLogin = opensAtLogin
     self.loginNotice = loginNotice
+    self.globalShortcuts = globalShortcuts
     self.installHelper = installHelper
     self.uninstallHelper = uninstallHelper
     self.setOpensAtLogin = setOpensAtLogin
+    self.setGlobalShortcuts = setGlobalShortcuts
     self.openLoginItems = openLoginItems
   }
 
@@ -61,6 +67,14 @@ public struct GeneralPane: View {
             ProblemCaption(loginNotice)
             Button("Open Login Items Settings…", action: openLoginItems)
           }
+        }
+      }
+
+      Section {
+        Toggle("Switch from anywhere", isOn: Binding(get: { globalShortcuts }, set: { setGlobalShortcuts($0) }))
+      } footer: {
+        FormFooter {
+          Text("⌃⌥⌘1–9 connects a VPN and ⌃⌥⌘0 turns it off.")
         }
       }
     }

@@ -24,6 +24,10 @@ final class AppModel {
   private(set) var helperStatus = HelperInstaller.Status.missing
   private(set) var helperNotice: String?
   private(set) var loginNotice: String?
+  /// The UserDefaults key behind Settings › General › "Switch from anywhere". Off unless chosen: a stray
+  /// press can drop a VPN that signs in through a browser, and only a person can bring it back.
+  static let globalShortcutsKey = "globalShortcuts"
+  private(set) var globalShortcutsEnabled = UserDefaults.standard.bool(forKey: AppModel.globalShortcutsKey)
   /// Counts every connect and disconnect anyone asked for, from the menu or `peony`, so a request
   /// waiting on the tunnel can tell when another one replaced it.
   @ObservationIgnored private(set) var intent = 0
@@ -34,6 +38,9 @@ final class AppModel {
   @ObservationIgnored private var interfaceCheck: Task<Void, Never>?
   @ObservationIgnored private var interfaceWatcher: InterfaceWatcher?
   @ObservationIgnored private var control: ControlServer?
+  @ObservationIgnored private var shortcuts: GlobalShortcuts?
+  /// Set once `adopt` has run, so no press acts on a tunnel Peony hasn't found yet.
+  @ObservationIgnored private var hasAdopted = false
   @ObservationIgnored private let logger = Logger(subsystem: "app.peony", category: "app")
 
   init() {
@@ -48,6 +55,8 @@ final class AppModel {
       let control = ControlServer(model: self)
       control.start()
       self.control = control
+      hasAdopted = true
+      applyGlobalShortcuts()
     }
     refreshHelperStatus()
     interfaceWatcher = InterfaceWatcher { [weak self] in self?.interfacesMayHaveChanged() }
@@ -125,6 +134,19 @@ final class AppModel {
     destinations = []
     startBlooming()
     return Task { await connection.disconnect() }
+  }
+
+  /// Built from the same live state the panel reads, at the moment of asking.
+  var controlSnapshot: ControlSnapshot {
+    let profiles = store.profiles
+    let vpn = connection.profileID.map { id in
+      ControlSnapshot.VPNRef(id: id, name: profiles.first { $0.id == id }?.name ?? "Removed VPN")
+    }
+    return ControlSnapshot(
+      tunnel: ControlSnapshot.Tunnel(
+        connection.state, vpn: vpn, since: connection.since, signingIn: connection.isSigningIn,
+        destinations: destinations, timing: connection.timing),
+      vpns: profiles.map(ControlSnapshot.VPN.init))
   }
 
   func quit() {
@@ -214,6 +236,32 @@ final class AppModel {
       loginNotice = "macOS didn't allow opening at login. Move Peony to Applications and try again."
     }
     opensAtLogin = SMAppService.mainApp.status == .enabled
+  }
+
+  func setGlobalShortcuts(_ enabled: Bool) {
+    UserDefaults.standard.set(enabled, forKey: Self.globalShortcutsKey)
+    globalShortcutsEnabled = enabled
+    applyGlobalShortcuts()
+  }
+
+  private func applyGlobalShortcuts() {
+    guard hasAdopted else { return }
+    if globalShortcutsEnabled {
+      let shortcuts = shortcuts ?? GlobalShortcuts { [weak self] in self?.pressed($0) }
+      self.shortcuts = shortcuts
+      shortcuts.enable()
+    } else {
+      shortcuts?.disable()
+    }
+  }
+
+  /// Decides like `peony connect` and `peony disconnect`, then acts exactly as a click would.
+  private func pressed(_ shortcut: GlobalShortcut) {
+    guard let goal = shortcut.action(among: store.profiles.map(\.id), tunnel: controlSnapshot.tunnel) else { return }
+    switch goal {
+    case .up(let id): connect(id)
+    case .down: disconnect()
+    }
   }
 
   // MARK: Editing VPNs
