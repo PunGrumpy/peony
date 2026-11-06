@@ -12,7 +12,7 @@ final class ControlServer {
   private unowned let model: AppModel
   private var listener: ControlListener?
   private let logger = Logger(subsystem: "app.peony", category: "control")
-  private static let tick: Duration = .milliseconds(250)
+  private static let tick: Duration = .milliseconds(50)
 
   init(model: AppModel) {
     self.model = model

@@ -38,6 +38,44 @@ public enum Probe {
     }
   }
 
+  /// Seconds until a host is checked again: 30 once it answers; 1, 2, 4, 8 after consecutive failures, then 30.
+  static func recheckDelay(failures: Int) -> Duration {
+    switch failures {
+    case 1...4: .seconds(1 << (failures - 1))
+    default: .seconds(30)
+    }
+  }
+
+  /// Checks each host on its own schedule until cancelled, reporting every result as it lands.
+  public static func watch(_ targets: [Target], report: @escaping @Sendable (Int, Int?) async -> Void) async {
+    await watch(targets, check: { await connect(to: $0) }, report: report)
+  }
+
+  static func watch(
+    _ targets: [Target],
+    check: @escaping @Sendable (Target) async -> Int?,
+    report: @escaping @Sendable (Int, Int?) async -> Void
+  ) async {
+    await withTaskGroup(of: Void.self) { group in
+      for (index, target) in targets.enumerated() {
+        group.addTask {
+          var failures = 0
+          while !Task.isCancelled {
+            let ms = await check(target)
+            // A cancelled check reads as a failure, which isn't news to anyone.
+            guard !Task.isCancelled else { return }
+            await report(index, ms)
+            failures = ms == nil ? failures + 1 : 0
+            let delay = recheckDelay(failures: failures)
+            // Tolerance lets macOS fold the slow wakeups in with others, which matters on battery.
+            let tolerance: Duration = delay == .seconds(30) ? .seconds(10) : .zero
+            guard (try? await Task.sleep(for: delay, tolerance: tolerance)) != nil else { return }
+          }
+        }
+      }
+    }
+  }
+
   private static func handshake(host: String, port: NWEndpoint.Port) async -> Int? {
     let connection = NWConnection(host: NWEndpoint.Host(host), port: port, using: .tcp)
     let outcome = Outcome()

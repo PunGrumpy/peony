@@ -30,6 +30,7 @@ final class AppModel {
 
   @ObservationIgnored private var lastSnapshot: InterfaceSnapshot?
   @ObservationIgnored private var probeTask: Task<Void, Never>?
+  @ObservationIgnored private var probeRun = 0
   @ObservationIgnored private var interfaceCheck: Task<Void, Never>?
   @ObservationIgnored private var interfaceWatcher: InterfaceWatcher?
   @ObservationIgnored private var control: ControlServer?
@@ -106,6 +107,7 @@ final class AppModel {
   func connect(_ id: UUID) -> Task<Void, Never>? {
     guard let profile = store.profile(id) else { return nil }
     intent += 1
+    stopProbing()
     destinations = []
     startBlooming()
     return Task {
@@ -116,7 +118,7 @@ final class AppModel {
   @discardableResult
   func disconnect() -> Task<Void, Never> {
     intent += 1
-    probeTask?.cancel()
+    stopProbing()
     destinations = []
     startBlooming()
     return Task { await connection.disconnect() }
@@ -271,34 +273,41 @@ final class AppModel {
     await connection.interfacesChanged()
   }
 
-  /// Checks each destination now, then every 30 seconds while the tunnel stays up.
+  /// Shows each destination as soon as it answers, and rechecks while the tunnel stays up.
   private func startProbing(_ profile: Profile) {
-    probeTask?.cancel()
+    stopProbing()
     let targets = profile.destinations.compactMap(Probe.Target.init)
     guard !targets.isEmpty else {
       connection.hostsChecked()
       return
     }
     destinations = targets.map { DestinationStatus(host: $0.host, reachability: .checking) }
-    probeTask = Task { [weak self] in
-      while !Task.isCancelled {
-        let results = await withTaskGroup(of: (Int, Int?).self) { group in
-          for (index, target) in targets.enumerated() {
-            group.addTask { (index, await Probe.connect(to: target)) }
-          }
-          var results: [Int: Int?] = [:]
-          for await (index, ms) in group { results[index] = ms }
-          return results
-        }
-        guard let self, connection.state.address != nil, !Task.isCancelled else { return }
-        destinations = targets.enumerated().map { index, target in
-          let ms = results[index] ?? nil
-          return DestinationStatus(host: target.host, reachability: ms.map { .reachable(milliseconds: $0) } ?? .unreachable)
-        }
-        connection.hostsChecked()
-        // Tolerance lets macOS fold this wakeup in with others, which matters on battery.
-        try? await Task.sleep(for: .seconds(30), tolerance: .seconds(10))
+    let run = probeRun
+    probeTask = Task {
+      await Probe.watch(targets) { [weak self] index, milliseconds in
+        await self?.record(run: run, index: index, milliseconds: milliseconds)
       }
+    }
+  }
+
+  /// Ends the current probe run; a result still on its way to the main actor is dropped.
+  private func stopProbing() {
+    probeTask?.cancel()
+    probeTask = nil
+    probeRun += 1
+  }
+
+  /// The settled flag and the last unanswered host change in one turn, so a waiting `peony`
+  /// never sees one without the other.
+  private func record(run: Int, index: Int, milliseconds: Int?) {
+    guard run == probeRun else { return }
+    guard connection.state.address != nil else {
+      stopProbing()
+      return
+    }
+    destinations[index].reachability = milliseconds.map { .reachable(milliseconds: $0) } ?? .unreachable
+    if !destinations.contains(where: { $0.reachability == .checking }) {
+      connection.hostsChecked()
     }
   }
 
