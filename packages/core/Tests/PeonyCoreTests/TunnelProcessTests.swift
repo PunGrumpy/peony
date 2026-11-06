@@ -40,7 +40,8 @@ struct TunnelProcessTests {
 
     #expect(ending == .exited(5))
     #expect(elapsed >= .milliseconds(900))
-    #expect(elapsed < .milliseconds(2500))
+    // Under the 8 s limit proves the second interrupt ended it. CI may be compiling alongside.
+    #expect(elapsed < .seconds(6))
   }
 
   @Test func `a client that ignores interrupts is abandoned at the limit`() async throws {
@@ -152,10 +153,9 @@ private struct Run {
     directory = FileManager.default.temporaryDirectory.appending(path: "peony-tunnel-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     countFile = directory.appending(path: "interrupts")
-    process = TunnelProcess(
-      executable: "/bin/sh", arguments: ["-c", "COUNT='\(countFile.path)'\n" + script], input: Data())
+    process = TunnelProcess(executable: "/bin/sh", arguments: ["-c", "COUNT='\(countFile.path)'\n" + script])
     let recorder = recorder
-    try process.start(onLine: { recorder.add($0) }, onExit: { recorder.exit($0) })
+    try process.start(input: Data(), onLine: { recorder.add($0) }, onExit: { recorder.exit($0) })
   }
 
   func waitUntilReady() async throws {
@@ -167,9 +167,11 @@ private struct Run {
   }
 
   /// Asks a script that is still running to leave, which also ends the `sleep` it started.
-  /// Only the PID the script reported, and never after it exited, when the number could belong to someone else.
+  /// Once, to the PID the script reported, because later the number could belong to someone else.
+  /// A script that never got as far as reporting it gets an interrupt instead.
   func terminate() {
-    if recorder.status == nil, let pid = recorder.pid { kill(pid, SIGTERM) }
+    guard recorder.status == nil, recorder.claimTermination() else { return }
+    if let pid = recorder.pid { kill(pid, SIGTERM) } else { process.interrupt() }
   }
 
   func cleanUp() {
@@ -186,6 +188,7 @@ private final class Recorder: @unchecked Sendable {
 
   private let lock = NSLock()
   private var current = Snapshot()
+  private var terminated = false
 
   var lines: [String] { read().lines }
   var status: Int32? { read().status }
@@ -197,7 +200,14 @@ private final class Recorder: @unchecked Sendable {
   func add(_ line: String) { lock.withLock { current.lines.append(line) } }
   func exit(_ status: Int32) { lock.withLock { current.status = status } }
 
-  func wait(timeout: Duration = .seconds(5), until done: (Snapshot) -> Bool) async throws {
+  func claimTermination() -> Bool {
+    lock.withLock {
+      defer { terminated = true }
+      return !terminated
+    }
+  }
+
+  func wait(timeout: Duration = .seconds(30), until done: (Snapshot) -> Bool) async throws {
     let deadline = ContinuousClock.now + timeout
     while !done(read()) {
       guard ContinuousClock.now < deadline else { throw TimedOut() }

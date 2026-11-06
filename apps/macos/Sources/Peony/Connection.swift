@@ -259,6 +259,7 @@ final class Connection {
 
     switch kind {
     case .forti, .openConnect, .openVPN:
+      let hadTunnel = process != nil || wasUp
       if let process {
         // sudo relays SIGINT to the helper, which passes it to the tunnel so it can tear down routes.
         let ending = await process.stop(Self.teardownPlan(for: kind))
@@ -268,8 +269,10 @@ final class Connection {
         // Adopted: nothing else can reach it.
         _ = await runHelper(.stop)
       }
-      for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil {
-        try? await Task.sleep(for: .milliseconds(100))
+      if hadTunnel {
+        for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil {
+          try? await Task.sleep(for: .milliseconds(100))
+        }
       }
     case .wireGuard(let settings):
       let result = await runHelper(.wireGuardDown(interfaceName: settings.interfaceName))
@@ -345,12 +348,11 @@ final class Connection {
   // MARK: Helper process
 
   private func launchHelper(_ request: HelperRequest) {
-    let instance = TunnelProcess(
-      executable: "/usr/bin/sudo", arguments: ["-n", Helper.installedPath, "run"],
-      input: (try? JSONEncoder().encode(request)) ?? Data())
+    let instance = TunnelProcess(executable: "/usr/bin/sudo", arguments: ["-n", Helper.installedPath, "run"])
     // A client that outlived its wait still reports lines and an exit. Only the current one counts.
     do {
       try instance.start(
+        input: (try? JSONEncoder().encode(request)) ?? Data(),
         onLine: { [weak self, weak instance] line in
           Task { @MainActor in
             guard let self, let instance, self.process === instance else { return }

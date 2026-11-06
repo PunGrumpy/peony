@@ -1,6 +1,5 @@
 import Darwin
 import Foundation
-import os
 
 /// How to take one kind of client down.
 public struct TeardownPlan: Sendable {
@@ -10,12 +9,6 @@ public struct TeardownPlan: Sendable {
   public var logoutGrace: Duration
   /// When to stop waiting altogether, counted from the first interrupt.
   public var limit: Duration
-
-  public init(isLinkDown: @escaping @Sendable (String) -> Bool, logoutGrace: Duration, limit: Duration) {
-    self.isLinkDown = isLinkDown
-    self.logoutGrace = logoutGrace
-    self.limit = limit
-  }
 
   /// openfortivpn restores routes and DNS, prints this line, then opens a new connection to log out.
   /// That connect doesn't retry when interrupted, so with an unreachable gateway only a second interrupt ends it.
@@ -41,11 +34,8 @@ public final class TunnelProcess: @unchecked Sendable {
 
   private let executable: String
   private let arguments: [String]
-  private let input: Data
   private let process = Process()
   private let queue = DispatchQueue(label: "app.peony.tunnel-process")
-  /// True while the client runs, so `interrupt` can be called from anywhere without waiting on `queue`.
-  private let isLive = OSAllocatedUnfairLock(initialState: false)
 
   // Everything below is touched only on `queue`, which also delivers the callbacks.
   private var onLine: (@Sendable (String) -> Void)?
@@ -58,13 +48,15 @@ public final class TunnelProcess: @unchecked Sendable {
   private var teardown: Teardown?
   private var waiters: [CheckedContinuation<Ending, Never>] = []
 
-  public init(executable: String, arguments: [String], input: Data) {
+  public init(executable: String, arguments: [String]) {
     self.executable = executable
     self.arguments = arguments
-    self.input = input
   }
 
-  public func start(onLine: @escaping @Sendable (String) -> Void, onExit: @escaping @Sendable (Int32) -> Void) throws {
+  /// `input` goes to the client's stdin and isn't kept: it can hold a password.
+  public func start(
+    input: Data, onLine: @escaping @Sendable (String) -> Void, onExit: @escaping @Sendable (Int32) -> Void
+  ) throws {
     let stdin = Pipe()
     let output = Pipe()
     process.executableURL = URL(filePath: executable)
@@ -88,7 +80,6 @@ public final class TunnelProcess: @unchecked Sendable {
     source.resume()
 
     process.terminationHandler = { [self] finished in
-      isLive.withLock { $0 = false }
       let status = finished.terminationStatus
       queue.async { self.exited(status) }
     }
@@ -105,7 +96,6 @@ public final class TunnelProcess: @unchecked Sendable {
       try? output.fileHandleForWriting.close()
       throw error
     }
-    isLive.withLock { $0 = process.isRunning }
 
     // Our copies of the child's ends, closed so the pipe can reach end of file.
     try? stdin.fileHandleForReading.close()
@@ -119,9 +109,7 @@ public final class TunnelProcess: @unchecked Sendable {
   /// One SIGINT, without waiting. `Process.interrupt` signals the client's whole process group, not
   /// only its first process, and that's what sudo and the helper have always received.
   public func interrupt() {
-    isLive.withLock { live in
-      if live { process.interrupt() }
-    }
+    if process.isRunning { process.interrupt() }
   }
 
   /// SIGINT. When a line matches `isLinkDown`, allow `logoutGrace`, then SIGINT again.
