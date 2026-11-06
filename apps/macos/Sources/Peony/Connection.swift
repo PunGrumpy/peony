@@ -9,6 +9,8 @@ import PeonyUI
 @Observable
 final class Connection {
   private(set) var profileID: UUID?
+  /// The VPN a switch is heading to, while the old tunnel leaves.
+  private(set) var nextProfileID: UUID?
   private(set) var state: TunnelState = .off
   private(set) var since: Date?
   /// How long the last switch took, once every host was checked. Nil until then, and for a tunnel Peony adopted.
@@ -44,7 +46,9 @@ final class Connection {
     // Taken before the teardown, because disconnect() ends by clearing the clock.
     let clicked = ContinuousClock.now
     if profileID != nil, state != .off {
+      nextProfileID = profile.id
       await disconnect()
+      nextProfileID = nil
     }
     var newClock = SwitchClock(start: clicked)
     newClock.tornDown()

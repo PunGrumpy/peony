@@ -61,6 +61,7 @@ final class AppModel {
         Route(id: profile.id, name: profile.name, kind: routeKind(profile.kind), endpoint: profile.endpoint)
       },
       activeRouteID: connection.profileID,
+      nextRouteID: connection.nextProfileID,
       connection: connection.state,
       connectedSince: connection.since,
       readyIn: connection.timing?.readyText,
@@ -75,7 +76,9 @@ final class AppModel {
     switch connection.state {
     case .on: return (PeonyMark.shapeCount, name)
     case .connecting: return (bloomStep, name.map { "\($0)…" })
-    case .disconnecting: return (bloomStep, nil)
+    case .disconnecting:
+      let next = connection.nextProfileID.flatMap { store.profile($0)?.name }
+      return (bloomStep, next.map { "\($0)…" })
     case .off, .failed: return (0, nil)
     }
   }

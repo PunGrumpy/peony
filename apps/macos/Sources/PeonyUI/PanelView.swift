@@ -33,7 +33,7 @@ public struct PanelView: View {
           .padding(.bottom, 6)
         Well {
           ForEach(Array(state.routes.enumerated()), id: \.element.id) { index, route in
-            RouteRow(route: route, state: state.state(of: route), shortcut: index < 9 ? index + 1 : nil,
+            RouteRow(route: route, state: state.state(of: route), isNext: route.id == state.nextRouteID, shortcut: index < 9 ? index + 1 : nil,
                      locked: state.isBusy, lift: lift, connect: { actions.connect(route.id) })
           }
           WellDivider()
@@ -152,7 +152,7 @@ private struct Hero: View {
   private var headline: String {
     switch state.connection {
     case .connecting: "Connecting to \(name)"
-    case .disconnecting: "Disconnecting"
+    case .disconnecting: state.nextRoute.map { "Switching to \($0.name)" } ?? "Disconnecting"
     case .on: "Connected to \(name)"
     case .failed: "Couldn't connect to \(name)"
     case .off: "Not connected"
@@ -238,6 +238,7 @@ private struct LiveDot: View {
 private struct RouteRow: View {
   let route: Route
   let state: TunnelState
+  let isNext: Bool
   let shortcut: Int?
   let locked: Bool
   let lift: Namespace.ID
@@ -302,7 +303,8 @@ private struct RouteRow: View {
   }
 
   private var tagKey: String {
-    switch state {
+    if isNext, state == .off { return "next" }
+    return switch state {
     case .on: "on"
     case .connecting: "connecting"
     case .disconnecting: "disconnecting"
@@ -312,6 +314,14 @@ private struct RouteRow: View {
   }
 
   @ViewBuilder private var tag: some View {
+    if isNext, state == .off {
+      Tag(text: "Next", color: Brand.muted)
+    } else {
+      stateTag
+    }
+  }
+
+  @ViewBuilder private var stateTag: some View {
     switch state {
     case .on: Tag(text: "Live", color: Brand.rose)
     case .connecting: Tag(text: "Joining", color: Brand.muted)
@@ -325,7 +335,8 @@ private struct RouteRow: View {
   }
 
   private var accessibilityStatus: String {
-    switch state {
+    if isNext, state == .off { return "next" }
+    return switch state {
     case .on(let address): "connected, \(address)"
     case .connecting: "connecting"
     case .disconnecting: "disconnecting"
