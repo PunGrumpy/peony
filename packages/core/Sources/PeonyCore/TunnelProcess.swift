@@ -44,8 +44,8 @@ public final class TunnelProcess: @unchecked Sendable {
   private let input: Data
   private let process = Process()
   private let queue = DispatchQueue(label: "app.peony.tunnel-process")
-  /// Set while the client runs, so `interrupt` can be called from anywhere without waiting on `queue`.
-  private let livePID = OSAllocatedUnfairLock<pid_t?>(initialState: nil)
+  /// True while the client runs, so `interrupt` can be called from anywhere without waiting on `queue`.
+  private let isLive = OSAllocatedUnfairLock(initialState: false)
 
   // Everything below is touched only on `queue`, which also delivers the callbacks.
   private var onLine: (@Sendable (String) -> Void)?
@@ -88,7 +88,7 @@ public final class TunnelProcess: @unchecked Sendable {
     source.resume()
 
     process.terminationHandler = { [self] finished in
-      livePID.withLock { $0 = nil }
+      isLive.withLock { $0 = false }
       let status = finished.terminationStatus
       queue.async { self.exited(status) }
     }
@@ -105,7 +105,7 @@ public final class TunnelProcess: @unchecked Sendable {
       try? output.fileHandleForWriting.close()
       throw error
     }
-    livePID.withLock { if process.isRunning { $0 = process.processIdentifier } }
+    isLive.withLock { $0 = process.isRunning }
 
     // Our copies of the child's ends, closed so the pipe can reach end of file.
     try? stdin.fileHandleForReading.close()
@@ -116,10 +116,11 @@ public final class TunnelProcess: @unchecked Sendable {
     try? writer.close()
   }
 
-  /// One SIGINT, without waiting. For when the app quits.
+  /// One SIGINT, without waiting. `Process.interrupt` signals the client's whole process group, not
+  /// only its first process, and that's what sudo and the helper have always received.
   public func interrupt() {
-    livePID.withLock { pid in
-      if let pid { kill(pid, SIGINT) }
+    isLive.withLock { live in
+      if live { process.interrupt() }
     }
   }
 
