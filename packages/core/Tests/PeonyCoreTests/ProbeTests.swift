@@ -53,22 +53,28 @@ struct ProbeTests {
     let all = reports.all
     let failed = try #require(all.first { $0.milliseconds == nil })
     let answered = try #require(all.first { $0.milliseconds != nil })
-    #expect(answered.at - failed.at < .milliseconds(2500))
+    // Well under the 30 s it used to take. `recheckDelay` pins the exact schedule, and CI may be compiling alongside.
+    #expect(answered.at - failed.at < .seconds(10))
   }
 
   @Test func `a silent host doesn't hold back a fast one`() async throws {
     let listener = try Listener()
     defer { close(listener.socket) }
-    // TEST-NET-1 never answers, so it can only report once its timeout runs out.
-    let targets = try [
-      #require(Probe.Target("192.0.2.1:443")),
-      #require(Probe.Target("127.0.0.1:\(listener.port)")),
-    ]
+    let silent = try #require(Probe.Target("silent.invalid:443"))
+    let fast = try #require(Probe.Target("127.0.0.1:\(listener.port)"))
     let reports = Reports()
-    let watching = Task { await Probe.watch(targets, timeout: .seconds(5), report: reports.record) }
+    let watching = Task {
+      await Probe.watch([silent, fast], check: { target in
+        if target == silent {
+          try? await Task.sleep(for: .seconds(60))
+          return nil
+        }
+        return await Probe.connect(to: target)
+      }, report: reports.record)
+    }
     defer { watching.cancel() }
 
-    try #require(await reports.wait(until: { $0.contains { $0.index == 1 } }, within: .seconds(4)))
+    try #require(await reports.wait(until: { $0.contains { $0.index == 1 } }, within: .seconds(10)))
     #expect(!reports.all.contains { $0.index == 0 })
   }
 
@@ -98,6 +104,10 @@ private final class Box<Value>: @unchecked Sendable {
     get { lock.withLock { stored } }
     set { lock.withLock { stored = newValue } }
   }
+
+  func update(_ change: (inout Value) -> Void) {
+    lock.withLock { change(&stored) }
+  }
 }
 
 /// What `Probe.watch` reported, and when.
@@ -120,7 +130,7 @@ private final class Reports: @unchecked Sendable {
   var record: @Sendable (Int, Int?) async -> Void {
     { [self] index, ms in
       onReport(ms)
-      entries.value.append(Entry(index: index, milliseconds: ms, at: .now))
+      entries.update { $0.append(Entry(index: index, milliseconds: ms, at: .now)) }
     }
   }
 

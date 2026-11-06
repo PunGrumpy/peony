@@ -39,7 +39,7 @@ public enum Probe {
   }
 
   /// Seconds until a host is checked again: 30 once it answers; 1, 2, 4, 8 after consecutive failures, then 30.
-  public static func recheckDelay(failures: Int) -> Duration {
+  static func recheckDelay(failures: Int) -> Duration {
     switch failures {
     case 1...4: .seconds(1 << (failures - 1))
     default: .seconds(30)
@@ -47,9 +47,13 @@ public enum Probe {
   }
 
   /// Checks each host on its own schedule until cancelled, reporting every result as it lands.
-  public static func watch(
+  public static func watch(_ targets: [Target], report: @escaping @Sendable (Int, Int?) async -> Void) async {
+    await watch(targets, check: { await connect(to: $0) }, report: report)
+  }
+
+  static func watch(
     _ targets: [Target],
-    timeout: Duration = .seconds(3),
+    check: @escaping @Sendable (Target) async -> Int?,
     report: @escaping @Sendable (Int, Int?) async -> Void
   ) async {
     await withTaskGroup(of: Void.self) { group in
@@ -57,7 +61,7 @@ public enum Probe {
         group.addTask {
           var failures = 0
           while !Task.isCancelled {
-            let ms = await connect(to: target, timeout: timeout)
+            let ms = await check(target)
             // A cancelled check reads as a failure, which isn't news to anyone.
             guard !Task.isCancelled else { return }
             await report(index, ms)
