@@ -51,6 +51,7 @@ let states: [(String, PanelState)] = [
   ("welcome", PanelState()),
   ("off", PanelState(routes: routes)),
   ("connecting", PanelState(routes: routes, activeRouteID: work.id, connection: .connecting)),
+  ("switching", PanelState(routes: routes, activeRouteID: work.id, nextRouteID: lab.id, connection: .disconnecting)),
   ("live", PanelState(
     routes: routes, activeRouteID: work.id, connection: .on(address: "10.122.0.8"), connectedSince: since, readyIn: "Ready in 2.4 s",
     destinations: [

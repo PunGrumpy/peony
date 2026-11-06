@@ -6,6 +6,8 @@ public struct PanelState: Equatable, Sendable {
   public var routes: [Route]
   /// The route that's up, coming up, going down, or just failed.
   public var activeRouteID: UUID?
+  /// The route a switch is heading to while the active one goes down.
+  public var nextRouteID: UUID?
   public var connection: TunnelState
   /// When the active route came up, for the running timer.
   public var connectedSince: Date?
@@ -17,6 +19,7 @@ public struct PanelState: Equatable, Sendable {
   public init(
     routes: [Route] = [],
     activeRouteID: UUID? = nil,
+    nextRouteID: UUID? = nil,
     connection: TunnelState = .off,
     connectedSince: Date? = nil,
     readyIn: String? = nil,
@@ -25,6 +28,7 @@ public struct PanelState: Equatable, Sendable {
   ) {
     self.routes = routes
     self.activeRouteID = activeRouteID
+    self.nextRouteID = nextRouteID
     self.connection = connection
     self.connectedSince = connectedSince
     self.readyIn = readyIn
@@ -34,6 +38,10 @@ public struct PanelState: Equatable, Sendable {
 
   public var activeRoute: Route? {
     routes.first { $0.id == activeRouteID }
+  }
+
+  public var nextRoute: Route? {
+    routes.first { $0.id == nextRouteID }
   }
 
   public func state(of route: Route) -> TunnelState {
