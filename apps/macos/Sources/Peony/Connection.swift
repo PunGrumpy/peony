@@ -125,6 +125,7 @@ final class Connection {
       let request = HelperRequest.wireGuardUp(.init(
         interfaceName: settings.interfaceName, config: secret))
       let result = await runHelper(request)
+      guard attempt == current, state == .connecting else { return }
       appendLog(result.output)
       if result.status == 0 {
         markUp()

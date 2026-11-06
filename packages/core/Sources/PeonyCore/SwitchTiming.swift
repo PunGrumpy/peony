@@ -23,7 +23,8 @@ public struct SwitchTiming: Equatable, Sendable {
 
   /// `Ready in 2.4 s: teardown 0.3 s, tunnel 1.9 s, hosts 0.2 s.`, for the log.
   public var summary: String {
-    "\(readyText): teardown \(Self.seconds(teardownMs)), tunnel \(Self.seconds(tunnelMs)), hosts \(Self.seconds(checksMs))."
+    let signIn = signInMs.map { ", sign-in \(Self.seconds($0)) (not counted)" } ?? ""
+    return "\(readyText): teardown \(Self.seconds(teardownMs)), tunnel \(Self.seconds(tunnelMs)), hosts \(Self.seconds(checksMs))\(signIn)."
   }
 
   /// Seconds to one decimal, rounding halves up. Integer math, so 2.25 can't land on either side by float luck.
@@ -65,41 +66,38 @@ public struct SwitchClock: Sendable {
   private var signInBeganAt: Instant?
   private var signInEndedAt: Instant?
   private var upAt: Instant?
-  private var timing: SwitchTiming?
 
   public init(start: Instant = .now) {
     self.start = start
   }
 
   public mutating func tornDown(at instant: Instant = .now) {
-    tornDownAt = tornDownAt ?? instant
+    tornDownAt = instant
   }
 
   public mutating func signInBegan(at instant: Instant = .now) {
-    signInBeganAt = signInBeganAt ?? instant
+    signInBeganAt = instant
   }
 
   public mutating func signInEnded(at instant: Instant = .now) {
-    signInEndedAt = signInEndedAt ?? instant
+    signInEndedAt = instant
   }
 
+  /// A client can report up more than once, and the first is when the switch got there.
   public mutating func up(at instant: Instant = .now) {
     upAt = upAt ?? instant
   }
 
-  /// Nil until `up`. Repeated marks keep the first one, so a later recheck can't move the number.
-  public mutating func checked(at instant: Instant = .now) -> SwitchTiming? {
-    if let timing { return timing }
+  /// Nil until `up`.
+  public func checked(at instant: Instant = .now) -> SwitchTiming? {
     guard let upAt else { return nil }
     let tornDownAt = tornDownAt ?? start
     let signIn = signInBeganAt.flatMap { began in signInEndedAt.map { $0 - began } }
-    let result = SwitchTiming(
+    return SwitchTiming(
       teardownMs: Self.milliseconds(tornDownAt - start),
       signInMs: signIn.map(Self.milliseconds),
       tunnelMs: Self.milliseconds((upAt - tornDownAt) - (signIn ?? .zero)),
       checksMs: Self.milliseconds(instant - upAt))
-    timing = result
-    return result
   }
 
   private static func milliseconds(_ duration: Duration) -> Int {

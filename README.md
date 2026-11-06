@@ -72,7 +72,7 @@ Add `--json` for one JSON object on stdout, the same shape for every command, an
 }
 ```
 
-`tunnel.timing` says how long the switch took. `readyMs` is the click to every host checked once: the old tunnel coming down (`teardownMs`), the new one coming up (`tunnelMs`) and the first host checks (`checksMs`). A browser sign-in is a person's time, so `signInMs` reports it separately and `readyMs` leaves it out. It's absent on a tunnel Peony adopted, and until the hosts are checked. Peony's panel shows it as `Ready in 2.4 s`, and its log window and the unified log (`log show --predicate 'subsystem == "app.peony"'`) record it.
+`tunnel.timing` says how long the switch took. `readyMs` is the click to every host checked once: the old tunnel coming down (`teardownMs`), the new one coming up (`tunnelMs`) and the first host checks (`checksMs`). A FortiGate browser sign-in is a person's time, so `signInMs` reports it separately and `readyMs` leaves it out. A sign-in NetBird asks for happens outside Peony, so it counts as `tunnelMs`. `timing` is absent on a tunnel Peony adopted, and until every host has been checked once. Peony's panel shows it as `Ready in 2.4 s`, and its log window and the unified log (`log show --predicate 'subsystem == "app.peony"'`) record it.
 
 | Exit | Meaning |
 | --- | --- |

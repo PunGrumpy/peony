@@ -58,16 +58,15 @@ struct SwitchTimingTests {
     #expect(timing == nil)
   }
 
-  @Test func `a later check can't move the number`() throws {
+  @Test func `a client reporting up again can't move the number`() throws {
     var clock = SwitchClock(start: start)
     clock.tornDown(at: at(0))
     clock.up(at: at(1000))
+    clock.up(at: at(1100))
     let result = clock.checked(at: at(1200))
-    let first = try #require(result)
-    clock.up(at: at(9000))
-    let again = clock.checked(at: at(30_000))
-    #expect(again == first)
-    #expect(first.checksMs == 200)
+    let timing = try #require(result)
+    #expect(timing.tunnelMs == 1000)
+    #expect(timing.checksMs == 200)
   }
 
   @Test func `no hosts means the tunnel being up is the end`() throws {
@@ -90,6 +89,8 @@ struct SwitchTimingTests {
   @Test func `the log line breaks the total into its parts`() {
     let timing = SwitchTiming(teardownMs: 300, tunnelMs: 1900, checksMs: 200)
     #expect(timing.summary == "Ready in 2.4 s: teardown 0.3 s, tunnel 1.9 s, hosts 0.2 s.")
+    let signedIn = SwitchTiming(teardownMs: 300, signInMs: 30_000, tunnelMs: 1900, checksMs: 200)
+    #expect(signedIn.summary == "Ready in 2.4 s: teardown 0.3 s, tunnel 1.9 s, hosts 0.2 s, sign-in 30.0 s (not counted).")
   }
 
   @Test func `json carries the total so a reader doesn't add the parts`() throws {
