@@ -101,9 +101,12 @@ private struct GeneralSettings: View {
       helperNotice: model.helperNotice,
       opensAtLogin: model.opensAtLogin,
       loginNotice: model.loginNotice,
+      globalShortcuts: model.globalShortcutsEnabled,
+      shortcutsNotice: GlobalShortcut.notice(taken: model.shortcutsTaken),
       installHelper: model.installHelper,
       uninstallHelper: model.uninstallHelper,
       setOpensAtLogin: model.setOpensAtLogin,
+      setGlobalShortcuts: model.setGlobalShortcuts,
       openLoginItems: SMAppService.openSystemSettingsLoginItems)
       .navigationTitle("General")
       .navigationSubtitle("One VPN on at a time, so routes and DNS never fight")
