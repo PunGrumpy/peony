@@ -1,5 +1,18 @@
 # @peony/macos
 
+## 0.3.0
+
+### Minor Changes
+
+- 339100b: Switch VPNs from any app: turn on **Switch from anywhere** in Settings › General, then ⌃⌥⌘1–9 connects a VPN and ⌃⌥⌘0 turns it off. It's off by default.
+- 8906bee: Show how long each switch took: the panel says "Ready in 2.4 s" once your hosts are checked, and `peony --json` breaks it down.
+
+### Patch Changes
+
+- 4a83182: Switching away from a FortiGate no longer waits for the old client's slow logout once its tunnel is already gone.
+- f3f25bb: Show each host as soon as it answers instead of waiting for the slowest one, and check a failed host again after a second instead of half a minute.
+- 403ebdd: Name the VPN you picked while the old one leaves: the panel says "Switching to Lab" and the menu bar shows its name instead of going blank.
+
 ## 0.2.0
 
 ### Minor Changes
