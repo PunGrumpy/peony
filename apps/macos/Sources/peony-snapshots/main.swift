@@ -178,7 +178,7 @@ let panes: [(String, CGSize, AnyView)] = [
   ("general-notices", CGSize(width: 540, height: 420), AnyView(GeneralPane(
     helper: .missing, helperNotice: "The administrator didn't approve the helper.", opensAtLogin: false,
     loginNotice: "macOS didn't allow opening at login. Move Peony to Applications and try again.",
-    globalShortcuts: true, shortcutsNotice: GlobalShortcut.notice(taken: [.route(2), .route(5)])))),
+    globalShortcuts: true))),
   ("agents", CGSize(width: 540, height: 380), AnyView(AgentsPane(
     isEnabled: .constant(true),
     rows: [

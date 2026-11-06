@@ -28,8 +28,6 @@ final class AppModel {
   /// press can drop a VPN that signs in through a browser, and only a person can bring it back.
   static let globalShortcutsKey = "globalShortcuts"
   private(set) var globalShortcutsEnabled = UserDefaults.standard.bool(forKey: AppModel.globalShortcutsKey)
-  /// The chords macOS or another app already holds, from the last time shortcuts were switched on.
-  private(set) var shortcutsTaken: [GlobalShortcut] = []
   /// Counts every connect and disconnect anyone asked for, from the menu or `peony`, so a request
   /// waiting on the tunnel can tell when another one replaced it.
   @ObservationIgnored private(set) var intent = 0
@@ -251,10 +249,9 @@ final class AppModel {
     if globalShortcutsEnabled {
       let shortcuts = shortcuts ?? GlobalShortcuts { [weak self] in self?.pressed($0) }
       self.shortcuts = shortcuts
-      shortcutsTaken = shortcuts.enable()
+      shortcuts.enable()
     } else {
       shortcuts?.disable()
-      shortcutsTaken = []
     }
   }
 

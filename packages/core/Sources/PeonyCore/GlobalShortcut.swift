@@ -43,12 +43,4 @@ public enum GlobalShortcut: Equatable, Sendable {
     // A tunnel that's going down is ignored rather than waited out: nobody is waiting to be told.
     return ControlPolicy.plan(goal, tunnel) == .start ? goal : nil
   }
-
-  /// The notice for chords macOS or another app already holds, or nil when none are. The rest still work.
-  public static func notice(taken: [GlobalShortcut]) -> String? {
-    guard !taken.isEmpty else { return nil }
-    if taken.count == all.count { return "Another app already uses every one of these shortcuts." }
-    let names = taken.map(\.title).formatted(.list(type: .and, width: .standard))
-    return "\(names) \(taken.count == 1 ? "is" : "are") already used by another app. The rest still work."
-  }
 }

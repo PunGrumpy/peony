@@ -1,10 +1,12 @@
 import Carbon.HIToolbox
+import OSLog
 import PeonyCore
 
 /// `⌃⌥⌘1`–`⌃⌥⌘9` and `⌃⌥⌘0`, delivered whichever app is in front.
 ///
 /// Carbon's `RegisterEventHotKey` is the one global hotkey API that needs no Accessibility or Input
-/// Monitoring permission, which Peony would otherwise have to ask for.
+/// Monitoring permission, which Peony would otherwise have to ask for. It doesn't report a chord another
+/// app holds: both registrations succeed, so Peony can't warn about a clash.
 nonisolated final class GlobalShortcuts {
   private static let signature: OSType = 0x5045_4F4E // 'PEON'
   private static let modifiers = UInt32(controlKey | optionKey | cmdKey)
@@ -13,6 +15,7 @@ nonisolated final class GlobalShortcuts {
     5: kVK_ANSI_5, 6: kVK_ANSI_6, 7: kVK_ANSI_7, 8: kVK_ANSI_8, 9: kVK_ANSI_9,
   ]
 
+  private let logger = Logger(subsystem: "app.peony", category: "shortcuts")
   private let onPress: @MainActor (GlobalShortcut) -> Void
   private var handler: EventHandlerRef?
   private var retained: Unmanaged<Handler>?
@@ -26,9 +29,7 @@ nonisolated final class GlobalShortcuts {
     disable()
   }
 
-  /// Registers every chord and returns the ones that couldn't be: another app or macOS holds them.
-  /// The rest still work.
-  func enable() -> [GlobalShortcut] {
+  func enable() {
     disable()
     // Retained until the handler is removed, so a late event can't reach a freed box.
     let box = Unmanaged.passRetained(Handler(onPress))
@@ -49,11 +50,11 @@ nonisolated final class GlobalShortcuts {
       return noErr
     }, 1, &type, box.toOpaque(), &handler)
     guard installed == noErr else {
+      logger.error("Couldn't listen for global shortcuts: \(installed)")
       disable()
-      return GlobalShortcut.all
+      return
     }
 
-    var taken: [GlobalShortcut] = []
     for shortcut in GlobalShortcut.all {
       var hotKey: EventHotKeyRef?
       let status = RegisterEventHotKey(
@@ -62,10 +63,9 @@ nonisolated final class GlobalShortcuts {
       if status == noErr, let hotKey {
         hotKeys.append(hotKey)
       } else {
-        taken.append(shortcut)
+        logger.error("Couldn't register \(shortcut.title, privacy: .public): \(status)")
       }
     }
-    return taken
   }
 
   func disable() {

@@ -102,7 +102,6 @@ private struct GeneralSettings: View {
       opensAtLogin: model.opensAtLogin,
       loginNotice: model.loginNotice,
       globalShortcuts: model.globalShortcutsEnabled,
-      shortcutsNotice: GlobalShortcut.notice(taken: model.shortcutsTaken),
       installHelper: model.installHelper,
       uninstallHelper: model.uninstallHelper,
       setOpensAtLogin: model.setOpensAtLogin,

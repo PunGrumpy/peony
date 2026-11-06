@@ -14,7 +14,6 @@ public struct GeneralPane: View {
   let opensAtLogin: Bool
   let loginNotice: String?
   let globalShortcuts: Bool
-  let shortcutsNotice: String?
   let installHelper: () -> Void
   let uninstallHelper: () -> Void
   let setOpensAtLogin: (Bool) -> Void
@@ -23,7 +22,7 @@ public struct GeneralPane: View {
 
   public init(
     helper: Helper, helperNotice: String? = nil, opensAtLogin: Bool, loginNotice: String? = nil,
-    globalShortcuts: Bool = false, shortcutsNotice: String? = nil,
+    globalShortcuts: Bool = false,
     installHelper: @escaping () -> Void = {}, uninstallHelper: @escaping () -> Void = {},
     setOpensAtLogin: @escaping (Bool) -> Void = { _ in }, setGlobalShortcuts: @escaping (Bool) -> Void = { _ in },
     openLoginItems: @escaping () -> Void = {}
@@ -33,7 +32,6 @@ public struct GeneralPane: View {
     self.opensAtLogin = opensAtLogin
     self.loginNotice = loginNotice
     self.globalShortcuts = globalShortcuts
-    self.shortcutsNotice = shortcutsNotice
     self.installHelper = installHelper
     self.uninstallHelper = uninstallHelper
     self.setOpensAtLogin = setOpensAtLogin
@@ -76,7 +74,6 @@ public struct GeneralPane: View {
         Toggle("Switch from anywhere", isOn: Binding(get: { globalShortcuts }, set: { setGlobalShortcuts($0) }))
       } footer: {
         FormFooter {
-          if let shortcutsNotice { ProblemCaption(shortcutsNotice) }
           Text("⌃⌥⌘1–9 connects a VPN and ⌃⌥⌘0 turns it off.")
         }
       }

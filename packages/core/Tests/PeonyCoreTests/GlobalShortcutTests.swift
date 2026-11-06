@@ -90,19 +90,4 @@ struct GlobalShortcutTests {
     #expect(GlobalShortcut.disconnect.action(among: [office], tunnel: .off) == nil)
     #expect(GlobalShortcut.disconnect.action(among: [office], tunnel: .disconnecting(officeRef)) == nil)
   }
-
-  // MARK: Notice
-
-  @Test func `no notice when every chord registered`() {
-    #expect(GlobalShortcut.notice(taken: []) == nil)
-  }
-
-  @Test func `the notice names the taken chords and says the rest work`() {
-    #expect(GlobalShortcut.notice(taken: [.route(2)]) == "⌃⌥⌘2 is already used by another app. The rest still work.")
-    #expect(GlobalShortcut.notice(taken: [.route(2), .disconnect]) == "⌃⌥⌘2 and ⌃⌥⌘0 are already used by another app. The rest still work.")
-  }
-
-  @Test func `the notice does not promise the rest when none registered`() {
-    #expect(GlobalShortcut.notice(taken: GlobalShortcut.all) == "Another app already uses every one of these shortcuts.")
-  }
 }
