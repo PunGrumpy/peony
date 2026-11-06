@@ -118,7 +118,7 @@ final class ControlServer {
     return ControlSnapshot(
       tunnel: ControlSnapshot.Tunnel(
         connection.state, vpn: vpn, since: connection.since, signingIn: connection.isSigningIn,
-        destinations: model.destinations),
+        destinations: model.destinations, timing: connection.timing),
       vpns: profiles.map(ControlSnapshot.VPN.init))
   }
 
@@ -134,7 +134,7 @@ final class ControlServer {
 extension ControlSnapshot.Tunnel {
   /// The only place the app's tunnel types meet the control types. Every switch is exhaustive, so a
   /// new state or fix fails the build here instead of leaking a certificate pin or going missing.
-  init(_ state: TunnelState, vpn: ControlSnapshot.VPNRef?, since: Date?, signingIn: Bool, destinations: [DestinationStatus]) {
+  init(_ state: TunnelState, vpn: ControlSnapshot.VPNRef?, since: Date?, signingIn: Bool, destinations: [DestinationStatus], timing: SwitchTiming?) {
     // Connection names its profile before it leaves .off, so a tunnel without one is off.
     guard let vpn else {
       self = .off
@@ -156,7 +156,7 @@ extension ControlSnapshot.Tunnel {
         }
         return ControlSnapshot.Host(host: destination.host, status: status)
       }
-      self = .on(vpn, address: address.isEmpty ? nil : address, since: since, hosts: hosts)
+      self = .on(vpn, address: address.isEmpty ? nil : address, since: since, hosts: hosts, timing: timing)
     case .failed(let failure):
       // The pin stays behind: trusting a server is only ever a confirmed choice in the app.
       let fix = failure.fix.map { fix in

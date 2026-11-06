@@ -11,6 +11,8 @@ final class Connection {
   private(set) var profileID: UUID?
   private(set) var state: TunnelState = .off
   private(set) var since: Date?
+  /// How long the last switch took, once every host was checked. Nil until then, and for a tunnel Peony adopted.
+  private(set) var timing: SwitchTiming?
   /// The tunnel tool's output, for the log window.
   private(set) var log: [LogLine] = []
 
@@ -25,6 +27,7 @@ final class Connection {
   @ObservationIgnored private var failure: TunnelFailure?
   /// Bumped by each connect, so one that was superseded while suspended can tell.
   @ObservationIgnored private var attempt = 0
+  @ObservationIgnored private var clock: SwitchClock?
   @ObservationIgnored private var pendingText = ""
   @ObservationIgnored private var nextLogID = 0
   @ObservationIgnored private var fortiParser = FortiLogParser()
@@ -39,9 +42,15 @@ final class Connection {
       browser.focus()
       return
     }
+    // Taken before the teardown, because disconnect() ends by clearing the clock.
+    let clicked = ContinuousClock.now
     if profileID != nil, state != .off {
       await disconnect()
     }
+    var newClock = SwitchClock(start: clicked)
+    newClock.tornDown()
+    clock = newClock
+    timing = nil
     attempt += 1
     let current = attempt
     profileID = profile.id
@@ -91,8 +100,10 @@ final class Connection {
           state = .failed(TunnelFailure(message: "\(profile.name)'s server address isn't valid.", fix: .editProfile))
           return
         }
+        clock?.signInBegan()
         let cookie = await browser.cookie(from: url, host: settings.host)
         guard attempt == current, state == .connecting else { return }
+        clock?.signInEnded()
         // Closing the window is a cancel, not a failure.
         guard let cookie else {
           finish()
@@ -114,6 +125,7 @@ final class Connection {
       let request = HelperRequest.wireGuardUp(.init(
         interfaceName: settings.interfaceName, config: secret))
       let result = await runHelper(request)
+      guard attempt == current, state == .connecting else { return }
       appendLog(result.output)
       if result.status == 0 {
         markUp()
@@ -280,6 +292,18 @@ final class Connection {
     state = .off
     since = nil
     process = nil
+    clock = nil
+    timing = nil
+  }
+
+  /// Called once the first pass of host checks is in (or at once with no hosts), which ends a switch.
+  func hostsChecked() {
+    guard timing == nil, let result = clock?.checked() else { return }
+    timing = result
+    log.append(LogLine(id: nextLogID, text: result.summary))
+    nextLogID += 1
+    // .notice, because .info isn't kept once the log stream closes.
+    logger.notice("\(result.summary, privacy: .public)")
   }
 
   // MARK: Monitoring
@@ -309,6 +333,7 @@ final class Connection {
       state = .on(address: status.address ?? "")
       if !wasUp {
         since = .now
+        clock?.up()
         if let profileID { onUp?(profileID) }
       }
     } else if state.address != nil {
@@ -401,6 +426,7 @@ final class Connection {
 
   private func markUp() {
     since = .now
+    clock?.up()
     state = .on(address: newAddress() ?? "")
     if let profileID { onUp?(profileID) }
   }

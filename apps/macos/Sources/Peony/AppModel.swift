@@ -62,6 +62,7 @@ final class AppModel {
       activeRouteID: connection.profileID,
       connection: connection.state,
       connectedSince: connection.since,
+      readyIn: connection.timing?.readyText,
       destinations: destinations,
       opensAtLogin: opensAtLogin
     )
@@ -274,7 +275,10 @@ final class AppModel {
   private func startProbing(_ profile: Profile) {
     probeTask?.cancel()
     let targets = profile.destinations.compactMap(Probe.Target.init)
-    guard !targets.isEmpty else { return }
+    guard !targets.isEmpty else {
+      connection.hostsChecked()
+      return
+    }
     destinations = targets.map { DestinationStatus(host: $0.host, reachability: .checking) }
     probeTask = Task { [weak self] in
       while !Task.isCancelled {
@@ -291,6 +295,7 @@ final class AppModel {
           let ms = results[index] ?? nil
           return DestinationStatus(host: target.host, reachability: ms.map { .reachable(milliseconds: $0) } ?? .unreachable)
         }
+        connection.hostsChecked()
         // Tolerance lets macOS fold this wakeup in with others, which matters on battery.
         try? await Task.sleep(for: .seconds(30), tolerance: .seconds(10))
       }
