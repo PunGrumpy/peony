@@ -21,14 +21,13 @@ final class Connection {
 
   /// Called when a tunnel comes up, whichever way it got there, so checks start with it.
   @ObservationIgnored var onUp: ((UUID) -> Void)?
-  @ObservationIgnored private var process: Process?
+  @ObservationIgnored private var process: TunnelProcess?
   @ObservationIgnored private var kind: Profile.Kind?
   @ObservationIgnored private var before = InterfaceSnapshot(ipv4: [:])
   @ObservationIgnored private var failure: TunnelFailure?
   /// Bumped by each connect, so one that was superseded while suspended can tell.
   @ObservationIgnored private var attempt = 0
   @ObservationIgnored private var clock: SwitchClock?
-  @ObservationIgnored private var pendingText = ""
   @ObservationIgnored private var nextLogID = 0
   @ObservationIgnored private var fortiParser = FortiLogParser()
   @ObservationIgnored private let browser = BrowserSignIn()
@@ -60,7 +59,6 @@ final class Connection {
     since = nil
     failure = nil
     log.removeAll()
-    pendingText = ""
     fortiParser = FortiLogParser()
     openVPNParser = OpenVPNLogParser()
     before = InterfaceSnapshot.current()
@@ -263,16 +261,15 @@ final class Connection {
     case .forti, .openConnect, .openVPN:
       if let process {
         // sudo relays SIGINT to the helper, which passes it to the tunnel so it can tear down routes.
-        process.interrupt()
-        for _ in 0..<80 where self.process != nil {
-          try? await Task.sleep(for: .milliseconds(100))
-        }
-      }
-      if process != nil || wasUp {
+        let ending = await process.stop(Self.teardownPlan(for: kind))
+        if self.process === process { self.process = nil }
+        if ending == .abandoned { _ = await runHelper(.stop) }
+      } else if wasUp {
+        // Adopted: nothing else can reach it.
         _ = await runHelper(.stop)
-        for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil || process != nil {
-          try? await Task.sleep(for: .milliseconds(100))
-        }
+      }
+      for _ in 0..<80 where InterfaceSnapshot.current().fortiAddress != nil {
+        try? await Task.sleep(for: .milliseconds(100))
       }
     case .wireGuard(let settings):
       let result = await runHelper(.wireGuardDown(interfaceName: settings.interfaceName))
@@ -281,6 +278,10 @@ final class Connection {
       if let daemon = kind.daemon { _ = try? await Command.run(daemon.executable, "down") }
     }
     finish()
+  }
+
+  private static func teardownPlan(for kind: Profile.Kind) -> TeardownPlan {
+    if case .forti = kind { .forti } else { .plain }
   }
 
   /// Ends the tunnel without waiting, for when the app quits.
@@ -344,34 +345,25 @@ final class Connection {
   // MARK: Helper process
 
   private func launchHelper(_ request: HelperRequest) {
-    let process = Process()
-    process.executableURL = URL(filePath: "/usr/bin/sudo")
-    process.arguments = ["-n", Helper.installedPath, "run"]
-    let input = Pipe()
-    let output = Pipe()
-    process.standardInput = input
-    process.standardOutput = output
-    process.standardError = output
-
-    output.fileHandleForReading.readabilityHandler = { [weak self] handle in
-      let data = handle.availableData
-      guard !data.isEmpty else {
-        handle.readabilityHandler = nil
-        return
-      }
-      let text = String(decoding: data, as: UTF8.self)
-      Task { @MainActor in self?.consume(text) }
-    }
-    process.terminationHandler = { [weak self] finished in
-      let status = finished.terminationStatus
-      Task { @MainActor in self?.processEnded(status: status) }
-    }
-
+    let instance = TunnelProcess(
+      executable: "/usr/bin/sudo", arguments: ["-n", Helper.installedPath, "run"],
+      input: (try? JSONEncoder().encode(request)) ?? Data())
+    // A client that outlived its wait still reports lines and an exit. Only the current one counts.
     do {
-      try process.run()
-      self.process = process
-      input.fileHandleForWriting.write((try? JSONEncoder().encode(request)) ?? Data())
-      try? input.fileHandleForWriting.close()
+      try instance.start(
+        onLine: { [weak self, weak instance] line in
+          Task { @MainActor in
+            guard let self, let instance, self.process === instance else { return }
+            self.appendLog([line])
+          }
+        },
+        onExit: { [weak self, weak instance] status in
+          Task { @MainActor in
+            guard let self, let instance, self.process === instance else { return }
+            self.processEnded(status: status)
+          }
+        })
+      process = instance
     } catch {
       logger.error("Couldn't launch the helper: \(error.localizedDescription, privacy: .public)")
       state = .failed(TunnelFailure(message: "Couldn't start Peony's helper.", fix: .installHelper))
@@ -386,13 +378,6 @@ final class Connection {
     } catch {
       return (-1, error.localizedDescription)
     }
-  }
-
-  private func consume(_ text: String) {
-    pendingText += text
-    var lines = pendingText.components(separatedBy: "\n")
-    pendingText = lines.removeLast()
-    appendLog(lines)
   }
 
   private func parse(_ line: String) -> TunnelEvent? {
@@ -433,7 +418,6 @@ final class Connection {
 
   private func processEnded(status: Int32) {
     process = nil
-    if !pendingText.isEmpty { consume("\n") }
     logger.info("Tunnel process exited with status \(status)")
     switch state {
     case .disconnecting, .off:
