@@ -61,6 +61,7 @@ Add `--json` for one JSON object on stdout, the same shape for every command, an
     ],
     "since": "2026-10-29T09:12:03Z",
     "state": "on",
+    "timing": { "checksMs": 200, "readyMs": 2400, "teardownMs": 300, "tunnelMs": 1900 },
     "vpn": { "id": "6F1C0E52-0B7D-4C1A-9E43-2B1D8A6E7F10", "name": "Office" }
   },
   "version": 1,
@@ -70,6 +71,8 @@ Add `--json` for one JSON object on stdout, the same shape for every command, an
   ]
 }
 ```
+
+`tunnel.timing` says how long the switch took. `readyMs` is the click to every host checked once: the old tunnel coming down (`teardownMs`), the new one coming up (`tunnelMs`) and the first host checks (`checksMs`). A browser sign-in is a person's time, so `signInMs` reports it separately and `readyMs` leaves it out. It's absent on a tunnel Peony adopted, and until the hosts are checked. Peony's panel shows it as `Ready in 2.4 s`, and its log window and the unified log (`log show --predicate 'subsystem == "app.peony"'`) record it.
 
 | Exit | Meaning |
 | --- | --- |

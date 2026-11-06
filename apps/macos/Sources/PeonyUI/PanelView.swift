@@ -162,22 +162,29 @@ private struct Hero: View {
   @ViewBuilder private var detail: some View {
     switch state.connection {
     case .on(let address):
-      HStack(spacing: 10) {
-        HStack(spacing: 6) {
-          LiveDot()
-          Text(address.isEmpty ? "up" : address)
-            .textSelection(.enabled)
-          if let since = state.connectedSince {
-            Text("·").foregroundStyle(Brand.muted)
-            Text(timerInterval: since...Date.distantFuture, countsDown: false)
-              .foregroundStyle(Brand.muted)
+      VStack(alignment: .leading, spacing: 5) {
+        HStack(spacing: 10) {
+          HStack(spacing: 6) {
+            LiveDot()
+            Text(address.isEmpty ? "up" : address)
+              .textSelection(.enabled)
+            if let since = state.connectedSince {
+              Text("·").foregroundStyle(Brand.muted)
+              Text(timerInterval: since...Date.distantFuture, countsDown: false)
+                .foregroundStyle(Brand.muted)
+            }
           }
+          .font(Typeface.mono)
+          .monospacedDigit()
+          Spacer()
+          PillButton(title: "Disconnect", style: .quiet, action: actions.disconnect)
+            .keyboardShortcut("0")
         }
-        .font(Typeface.mono)
-        .monospacedDigit()
-        Spacer()
-        PillButton(title: "Disconnect", style: .quiet, action: actions.disconnect)
-          .keyboardShortcut("0")
+        if let readyIn = state.readyIn {
+          Text(readyIn)
+            .font(Typeface.body)
+            .foregroundStyle(Brand.muted)
+        }
       }
     case .failed(let failure):
       VStack(alignment: .leading, spacing: 10) {

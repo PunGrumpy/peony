@@ -54,6 +54,20 @@ struct ControlTests {
     #expect(try decode(ControlReply.self, golden) == reply)
   }
 
+  @Test func `a switch that finished carries how long it took`() throws {
+    let since = try Date("2026-10-29T09:12:03Z", strategy: .iso8601)
+    let timing = SwitchTiming(teardownMs: 300, signInMs: 20_000, tunnelMs: 1900, checksMs: 200)
+    let reply = ControlReply.answered(.done, ControlSnapshot(
+      tunnel: .on(Self.officeRef, address: "10.212.134.5", since: since, hosts: [.init(host: "git.corp.example", status: .reachable(milliseconds: 23))], timing: timing),
+      vpns: [Self.home]))
+    let golden = #"""
+      {"outcome":"done","tunnel":{"address":"10.212.134.5","hosts":[{"host":"git.corp.example","ms":23,"status":"reachable"}],"since":"2026-10-29T09:12:03Z","state":"on","timing":{"checksMs":200,"readyMs":2400,"signInMs":20000,"teardownMs":300,"tunnelMs":1900},"vpn":{"id":"00000000-0000-0000-0000-000000000001","name":"Office"}},"version":1,"vpns":[{"active":false,"endpoint":"peony0","hosts":[],"id":"00000000-0000-0000-0000-000000000002","kind":"wireGuard","name":"Home"}]}
+
+      """#
+    #expect(try line(reply) == golden)
+    #expect(try decode(ControlReply.self, golden) == reply)
+  }
+
   @Test func `off has no VPN and nothing is active`() throws {
     let reply = ControlReply.answered(.done, ControlSnapshot(tunnel: .off, vpns: [Self.home]))
     let golden = #"""

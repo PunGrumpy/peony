@@ -92,13 +92,14 @@ public struct ControlSnapshot: Equatable, Sendable {
     case connecting(VPNRef, signingIn: Bool)
     case disconnecting(VPNRef)
     /// `address` is nil while macOS hasn't reported one; `since` is nil for a tunnel Peony adopted.
-    case on(VPNRef, address: String?, since: Date?, hosts: [Host])
+    /// `timing` is nil for an adopted tunnel, and until every host has been checked once.
+    case on(VPNRef, address: String?, since: Date?, hosts: [Host], timing: SwitchTiming? = nil)
     case failed(VPNRef, Failure)
 
     public var vpn: VPNRef? {
       switch self {
       case .off: nil
-      case .connecting(let vpn, _), .disconnecting(let vpn), .on(let vpn, _, _, _), .failed(let vpn, _): vpn
+      case .connecting(let vpn, _), .disconnecting(let vpn), .on(let vpn, _, _, _, _), .failed(let vpn, _): vpn
       }
     }
 
@@ -107,7 +108,7 @@ public struct ControlSnapshot: Equatable, Sendable {
       switch self {
       case .off, .failed: true
       case .connecting, .disconnecting: false
-      case .on(_, _, _, let hosts): !hosts.contains { $0.status == .checking }
+      case .on(_, _, _, let hosts, _): !hosts.contains { $0.status == .checking }
       }
     }
   }
@@ -303,7 +304,7 @@ public enum ControlPolicy {
   /// so the next `status` doesn't still report the failure.
   public static func plan(_ goal: Goal, _ tunnel: ControlSnapshot.Tunnel) -> Plan {
     switch (goal, tunnel) {
-    case (.up(let id), .on(let vpn, _, _, _)) where vpn.id == id: tunnel.isSettled ? .done : .join
+    case (.up(let id), .on(let vpn, _, _, _, _)) where vpn.id == id: tunnel.isSettled ? .done : .join
     case (.up(let id), .connecting(let vpn, _)) where vpn.id == id: .join
     case (.up, .disconnecting): .waitForOff
     case (.up, _): .start
@@ -475,7 +476,7 @@ extension ControlRefusal: Codable {
 }
 
 extension ControlSnapshot.Tunnel: Codable {
-  private enum CodingKeys: String, CodingKey { case state, vpn, signingIn, address, since, hosts, failure }
+  private enum CodingKeys: String, CodingKey { case state, vpn, signingIn, address, since, hosts, timing, failure }
   private enum State: String, Codable { case off, connecting, disconnecting, on, failed }
 
   public init(from decoder: any Decoder) throws {
@@ -491,7 +492,8 @@ extension ControlSnapshot.Tunnel: Codable {
     case .on:
       let since = try container.decodeIfPresent(String.self, forKey: .since).map { try Date($0, strategy: .iso8601) }
       self = .on(try vpn(), address: try container.decodeIfPresent(String.self, forKey: .address), since: since,
-                 hosts: try container.decode([ControlSnapshot.Host].self, forKey: .hosts))
+                 hosts: try container.decode([ControlSnapshot.Host].self, forKey: .hosts),
+                 timing: try container.decodeIfPresent(SwitchTiming.self, forKey: .timing))
     case .failed:
       self = .failed(try vpn(), try container.decode(ControlSnapshot.Failure.self, forKey: .failure))
     }
@@ -508,12 +510,13 @@ extension ControlSnapshot.Tunnel: Codable {
       try container.encode(signingIn, forKey: .signingIn)
     case .disconnecting:
       try container.encode(State.disconnecting, forKey: .state)
-    case .on(_, let address, let since, let hosts):
+    case .on(_, let address, let since, let hosts, let timing):
       try container.encode(State.on, forKey: .state)
       try container.encodeIfPresent(address, forKey: .address)
       // Formatted here rather than by the encoder's date strategy, so every encoder writes the same text.
       try container.encodeIfPresent(since?.formatted(.iso8601), forKey: .since)
       try container.encode(hosts, forKey: .hosts)
+      try container.encodeIfPresent(timing, forKey: .timing)
     case .failed(_, let failure):
       try container.encode(State.failed, forKey: .state)
       try container.encode(failure, forKey: .failure)

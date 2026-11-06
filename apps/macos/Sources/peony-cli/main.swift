@@ -154,7 +154,7 @@ func describe(_ tunnel: ControlSnapshot.Tunnel) -> [String] {
     return [signingIn ? "Connecting \(vpn.name): finish signing in in Peony's window." : "Connecting \(vpn.name)…"]
   case .disconnecting(let vpn):
     return ["Disconnecting \(vpn.name)…"]
-  case .on(let vpn, let address, _, let hosts):
+  case .on(let vpn, let address, _, let hosts, _):
     let width = hosts.map(\.host.count).max() ?? 0
     return ["\(vpn.name) is on" + (address.map { " at \($0)" } ?? "")] + hosts.map { host in
       let status = switch host.status {

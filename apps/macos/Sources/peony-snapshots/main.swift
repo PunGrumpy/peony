@@ -52,7 +52,7 @@ let states: [(String, PanelState)] = [
   ("off", PanelState(routes: routes)),
   ("connecting", PanelState(routes: routes, activeRouteID: work.id, connection: .connecting)),
   ("live", PanelState(
-    routes: routes, activeRouteID: work.id, connection: .on(address: "10.122.0.8"), connectedSince: since,
+    routes: routes, activeRouteID: work.id, connection: .on(address: "10.122.0.8"), connectedSince: since, readyIn: "Ready in 2.4 s",
     destinations: [
       DestinationStatus(host: "gitlab.acme.co", reachability: .reachable(milliseconds: 23)),
       DestinationStatus(host: "10.11.219.9", reachability: .reachable(milliseconds: 31)),

@@ -9,6 +9,8 @@ public struct PanelState: Equatable, Sendable {
   public var connection: TunnelState
   /// When the active route came up, for the running timer.
   public var connectedSince: Date?
+  /// How long the switch took, as `Ready in 2.4 s`. Nil for a tunnel Peony adopted.
+  public var readyIn: String?
   public var destinations: [DestinationStatus]
   public var opensAtLogin: Bool
 
@@ -17,6 +19,7 @@ public struct PanelState: Equatable, Sendable {
     activeRouteID: UUID? = nil,
     connection: TunnelState = .off,
     connectedSince: Date? = nil,
+    readyIn: String? = nil,
     destinations: [DestinationStatus] = [],
     opensAtLogin: Bool = false
   ) {
@@ -24,6 +27,7 @@ public struct PanelState: Equatable, Sendable {
     self.activeRouteID = activeRouteID
     self.connection = connection
     self.connectedSince = connectedSince
+    self.readyIn = readyIn
     self.destinations = destinations
     self.opensAtLogin = opensAtLogin
   }
