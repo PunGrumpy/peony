@@ -4,6 +4,9 @@
 # a temp folder of stand-ins (PEONY_TOOLS_DIR, debug builds only), so no real
 # tunnel is touched. Nothing outside the two temp folders is written except one
 # preferences file, ~/Library/Preferences/PeonyE2E.plist, which is deleted on exit.
+# macOS's Control Center also records the test app's menu bar item under trackedApplications in
+# ~/Library/Group Containers/group.com.apple.controlcenter/Library/Preferences/group.com.apple.controlcenter.plist;
+# that entry is replaced on each run and never removed, and this script can't prevent it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -74,14 +77,6 @@ chmod +x "$tools/tailscale" "$tools/netbird"
 echo Stopped > "$tools/tailscale.state"
 echo false > "$tools/netbird.state"
 : > "$tools/calls.log"
-
-# With a stand-in missing the app would have nothing to run, so stop before it starts.
-for tool in tailscale netbird; do
-  if [[ ! -x "$tools/$tool" ]]; then
-    echo "e2e: the stand-in $tools/$tool isn't executable, so the app has no client to run. Not starting it." >&2
-    exit 1
-  fi
-done
 
 # Only a Tailscale and a NetBird profile: the app adopts a running tunnel of a kind it has a profile for.
 mkdir -p "$home/Library/Application Support/Peony"
