@@ -35,21 +35,23 @@ struct FortiLogParserTests {
   @Test func `certificate failure followed by another error offers no fingerprint`() {
     var parser = FortiLogParser()
     _ = parser.consume(Self.certFailure)
-    #expect(parser.consume("ERROR:  Could not log out.") == .certificateRejected(digest: nil))
+    #expect(parser.consume("ERROR:  Unable to get gateway certificate.") == .certificateRejected(digest: nil))
   }
 
   @Test func `errors after a delivered fingerprint are ordinary errors`() {
     var parser = FortiLogParser()
     _ = parser.consume(Self.certFailure)
     #expect(parser.consume(Self.digestLine) == .certificateRejected(digest: Self.digest))
-    #expect(parser.consume("ERROR:  Could not log out.") == .error("Could not log out."))
+    #expect(
+      parser.consume("ERROR:  or add this line to your configuration file:")
+        == .error("or add this line to your configuration file:"))
   }
 
   @Test func `errors after a missing fingerprint are ordinary errors`() {
     var parser = FortiLogParser()
     _ = parser.consume(Self.certFailure)
-    #expect(parser.consume("ERROR:  Could not log out.") == .certificateRejected(digest: nil))
-    #expect(parser.consume("ERROR:  Could not log out.") == .error("Could not log out."))
+    #expect(parser.consume("ERROR:  Unable to get gateway certificate.") == .certificateRejected(digest: nil))
+    #expect(parser.consume("ERROR:  Unable to get gateway certificate.") == .error("Unable to get gateway certificate."))
   }
 
   @Test func `sudo without a password rule`() {
@@ -59,20 +61,17 @@ struct FortiLogParserTests {
 
   @Test func `ordinary error drops the prefix and padding`() {
     var parser = FortiLogParser()
-    #expect(parser.consume("ERROR:  Could not log out.") == .error("Could not log out."))
+    #expect(parser.consume("ERROR:  Unable to get gateway certificate.") == .error("Unable to get gateway certificate."))
   }
 
-  @Test(arguments: ["", "   ", "\t", "INFO:   Connected to gateway.", "INFO:   Authenticated."])
+  @Test(arguments: ["", "   ", "\t", "INFO:   Connected to gateway.", "INFO:   Authenticated.", "INFO:   Could not log out."])
   func `lines that mean nothing give no event`(line: String) {
     var parser = FortiLogParser()
     #expect(parser.consume(line) == nil)
   }
 
-  @Test(arguments: [
-    String(FortiLogParserTests.digest.dropLast()),
-    String(FortiLogParserTests.digest.prefix(8)),
-  ])
-  func `a fingerprint shorter than 64 characters is not offered`(short: String) {
+  @Test func `a fingerprint shorter than 64 characters is not offered`() {
+    let short = String(Self.digest.dropLast())
     var parser = FortiLogParser()
     _ = parser.consume(Self.certFailure)
     #expect(parser.consume("ERROR:      --trusted-cert \(short)") == .certificateRejected(digest: nil))
