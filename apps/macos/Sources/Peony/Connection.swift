@@ -149,28 +149,31 @@ final class Connection {
     case .netBird(let settings):
       var arguments = ["up"]
       if !settings.managementURL.isEmpty { arguments += ["--management-url", settings.managementURL] }
-      await bringUp(.netBird, arguments: arguments,
+      await bringUp(.netBird, attempt: current, arguments: arguments,
                     fallback: "NetBird didn't connect. If it asked you to sign in, finish that in your browser and try again.")
 
     case .tailscale:
       // Bare `up` keeps the exit node and other settings chosen in Tailscale,
       // but would wait on a browser if nobody is signed in.
-      guard let status = await Daemon.tailscale.status(), !status.needsLogin else {
+      let status = await Daemon.tailscale.status()
+      guard attempt == current, state == .connecting else { return }
+      guard let status, !status.needsLogin else {
         state = .failed(TunnelFailure(message: "Tailscale isn't running, signed in or approved yet. Open the Tailscale app, finish signing in, then connect again."))
         return
       }
-      await bringUp(.tailscale, arguments: ["up"], fallback: "Tailscale didn't connect.")
+      await bringUp(.tailscale, attempt: current, arguments: ["up"], fallback: "Tailscale didn't connect.")
     }
   }
 
-  private func bringUp(_ daemon: Daemon, arguments: [String], fallback: String) async {
+  private func bringUp(_ daemon: Daemon, attempt current: Int, arguments: [String], fallback: String) async {
     let result = try? await Command.run(daemon.executable, arguments: arguments)
+    // The client can return long after another VPN replaced this one. The log, the state and the parser are the newer one's.
+    guard attempt == current else { return }
     appendLog(result?.text ?? "")
     await refreshDaemon()
-    if state == .connecting {
-      let detail = result.flatMap { lastErrorLine($0.text) }
-      state = .failed(TunnelFailure(message: detail ?? fallback))
-    }
+    guard attempt == current, state == .connecting else { return }
+    let detail = result.flatMap { lastErrorLine($0.text) }
+    state = .failed(TunnelFailure(message: detail ?? fallback))
   }
 
   /// Catches what would otherwise fail deep inside a root process, with a fix the user can act on.
