@@ -18,7 +18,7 @@ struct PeonyApp: App {
       Panel(model: delegate.model)
     } label: {
       let menuBar = delegate.model.menuBar
-      MenuBarLabel(filledPetals: menuBar.petals, title: menuBar.title)
+      MenuBarLabel(filledPetals: menuBar.petals, title: menuBar.title, alert: menuBar.alert, status: menuBar.status)
     }
     .menuBarExtraStyle(.window)
 

@@ -60,6 +60,9 @@ let states: [(String, PanelState)] = [
       DestinationStatus(host: "10.11.219.9", reachability: .reachable(milliseconds: 31)),
       DestinationStatus(host: "grafana.acme.co", reachability: .unreachable),
     ], opensAtLogin: true)),
+  ("dropped", PanelState(
+    routes: routes, activeRouteID: work.id,
+    connection: .failed(TunnelFailure(message: "The connection dropped.", wasConnected: true)))),
   ("failed-certificate", PanelState(
     routes: routes, activeRouteID: work.id,
     connection: .failed(TunnelFailure(
@@ -130,9 +133,10 @@ for (name, state) in states {
 
 // The menu bar item in each state, on a light and a dark bar.
 let bar = HStack(spacing: 18) {
-  MenuBarLabel(filledPetals: 0, title: nil)
-  HStack(spacing: 4) { MenuBarLabel(filledPetals: 1, title: "Work…") }
-  HStack(spacing: 4) { MenuBarLabel(filledPetals: PeonyMark.shapeCount, title: "Work") }
+  MenuBarLabel(filledPetals: 0, title: nil, status: "Peony, not connected")
+  HStack(spacing: 4) { MenuBarLabel(filledPetals: 1, title: "Work…", status: "Peony, connecting to Work") }
+  HStack(spacing: 4) { MenuBarLabel(filledPetals: PeonyMark.shapeCount, title: "Work", status: "Peony, connected to Work") }
+  MenuBarLabel(filledPetals: 0, title: nil, alert: true, status: "Peony, disconnected from Work")
 }
 .font(.system(size: 13))
 .padding(.horizontal, 14)

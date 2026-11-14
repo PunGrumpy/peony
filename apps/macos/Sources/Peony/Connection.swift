@@ -332,7 +332,7 @@ final class Connection {
       await refreshDaemon()
     case .wireGuard:
       if newAddress() == nil, state.address != nil {
-        state = .failed(TunnelFailure(message: "The WireGuard interface went away."))
+        state = .failed(TunnelFailure(message: "The WireGuard interface went away.", wasConnected: true))
       }
     case .forti, .openConnect, .openVPN:
       if case .on(let address) = state, address.isEmpty, let found = newAddress() {
@@ -436,7 +436,9 @@ final class Connection {
     case .disconnecting, .off:
       break
     case .on:
-      state = .failed(failure ?? TunnelFailure(message: "The connection dropped."))
+      var dropped = failure ?? TunnelFailure(message: "The connection dropped.")
+      dropped.wasConnected = true
+      state = .failed(dropped)
       since = nil
     case .connecting, .failed:
       state = .failed(failure ?? TunnelFailure(message: "The tunnel stopped before it came up (exit \(status))."))

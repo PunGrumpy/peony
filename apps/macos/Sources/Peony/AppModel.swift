@@ -79,16 +79,20 @@ final class AppModel {
     )
   }
 
-  /// What the menu bar shows: petals filled, and the active VPN's name.
-  var menuBar: (petals: Int, title: String?) {
+  /// What the menu bar shows: petals filled, the active VPN's name, whether it failed or dropped,
+  /// and the state in words for VoiceOver.
+  var menuBar: (petals: Int, title: String?, alert: Bool, status: String) {
     let name = connection.profileID.flatMap { store.profile($0)?.name }
+    let vpn = name ?? "VPN"
     switch connection.state {
-    case .on: return (PeonyMark.shapeCount, name)
-    case .connecting: return (bloomStep, name.map { "\($0)…" })
+    case .on: return (PeonyMark.shapeCount, name, false, "Peony, connected to \(vpn)")
+    case .connecting: return (bloomStep, name.map { "\($0)…" }, false, "Peony, connecting to \(vpn)")
     case .disconnecting:
       let next = connection.nextProfileID.flatMap { store.profile($0)?.name }
-      return (bloomStep, next.map { "\($0)…" })
-    case .off, .failed: return (0, nil)
+      return (bloomStep, next.map { "\($0)…" }, false, next.map { "Peony, connecting to \($0)" } ?? "Peony, disconnecting")
+    case .off: return (0, nil, false, "Peony, not connected")
+    case .failed(let failure):
+      return (0, nil, true, failure.wasConnected ? "Peony, disconnected from \(vpn)" : "Peony, couldn't connect to \(vpn)")
     }
   }
 
