@@ -117,9 +117,20 @@ code=0
 seen=""
 failures=0
 
+# connect and disconnect open the installed Peony when nothing answers, so never send one once the test app is gone.
 drive() {
+  if ! kill -0 "$app" 2>/dev/null; then
+    echo "e2e: the test app (pid $app) is gone, so nothing more is sent: connect would open the installed Peony. Its output:" >&2
+    cat "$home/app.log" >&2
+    exit 1
+  fi
   code=0
   seen="$(peony "$@" --json 2>&1)" || code=$?
+  if [[ "$code" == 3 ]]; then
+    echo "e2e: Peony isn't available (peony $* exited 3), so the run stops here. The app's output:" >&2
+    cat "$home/app.log" >&2
+    exit 1
+  fi
 }
 
 # reply <exit code> [jq filter]: the last reply exited with that code and its JSON satisfies the filter.
@@ -147,8 +158,16 @@ check() {
   fi
 }
 
+# The gate: send connect and disconnect only to an app that is off and holds exactly the two test VPNs.
+# If CFFIXED_USER_HOME stopped redirecting the socket or the VPN list, this would be the installed Peony.
+only_the_test_app='.tunnel.state == "off" and ([.vpns[].id] == ["00000000-0000-0000-0000-0000000000A1","00000000-0000-0000-0000-0000000000B2"])'
 drive status
-check "the tunnel starts off" reply 0 '.tunnel.state == "off"'
+if ! reply 0 "$only_the_test_app"; then
+  echo "e2e: the app on the socket isn't the test app, so nothing else is sent. status exited $code and said:" >&2
+  sed 's/^/     /' <<<"$seen" >&2
+  exit 1
+fi
+check "the tunnel starts off" reply 0 "$only_the_test_app"
 
 drive connect Alpha
 check "connecting Alpha turns Tailscale on" \
