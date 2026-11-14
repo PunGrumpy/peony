@@ -186,6 +186,7 @@ public struct AddVPNSheet: View {
   let installTool: () -> Void
   let cancel: () -> Void
   let add: () -> Void
+  @State private var triedToAdd = false
 
   public init(
     draft: Binding<ProfileDraft>, revealsAllProblems: Bool = false, missingTool: (name: String, install: String)?,
@@ -203,16 +204,21 @@ public struct AddVPNSheet: View {
   public var body: some View {
     VStack(spacing: 0) {
       ProfileForm(
-        draft: $draft, isNew: true, revealsAllProblems: revealsAllProblems, missingTool: missingTool,
+        draft: $draft, isNew: true, revealsAllProblems: revealsAllProblems || triedToAdd, missingTool: missingTool,
         saveError: saveError, installTool: installTool)
       Divider()
       HStack {
         Spacer()
         Button("Cancel", role: .cancel, action: cancel)
           .keyboardShortcut(.cancelAction)
-        Button("Add", action: add)
-          .keyboardShortcut(.defaultAction)
-          .disabled(!draft.problems.isEmpty)
+        Button("Add") {
+          if draft.problems.isEmpty {
+            add()
+          } else {
+            triedToAdd = true
+          }
+        }
+        .keyboardShortcut(.defaultAction)
       }
       .padding(16)
     }
