@@ -19,15 +19,20 @@ home="$(mktemp -d /tmp/peony-e2e.XXXXXX)"
 tools="$(mktemp -d /tmp/peony-e2e-tools.XXXXXX)"
 app=""
 
+# The process with this PID is still the test app, not something that took the PID after it exited.
+is_test_app() { [[ "$(ps -o comm= -p "$app" 2>/dev/null)" == *PeonyE2E ]]; }
+
 cleanup() {
+  # A second Ctrl-C must not cut this short and leave the app or the temp folders behind.
+  trap '' INT TERM
   set +e
   if [[ -n "$app" ]]; then
-    kill "$app" 2>/dev/null
+    is_test_app && kill "$app" 2>/dev/null
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-      kill -0 "$app" 2>/dev/null || break
+      is_test_app || break
       sleep 0.25
     done
-    kill -9 "$app" 2>/dev/null
+    is_test_app && kill -9 "$app" 2>/dev/null
     wait "$app" 2>/dev/null
   fi
   defaults delete PeonyE2E 2>/dev/null || true
