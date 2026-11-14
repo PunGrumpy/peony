@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          type="${TITLE%%[:(]*}"
+          type="${TITLE%%[:(!]*}"
           case "$type" in
             feat) want=enhancement ;;
             fix) want=bug ;;
