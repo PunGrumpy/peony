@@ -15,6 +15,10 @@ if [[ "${1:-}" == "--installed-home" ]]; then
 else
   # Keep this path short: the control socket path must stay under 104 bytes.
   home="${PEONY_DEV_HOME:-/tmp/peony-dev-$(id -u)}"
+  if (( $(LC_ALL=C; echo ${#home}) > 56 )); then
+    echo "PEONY_DEV_HOME is too long: the home must be at most 56 bytes so the control socket path stays under 104 bytes." >&2
+    exit 1
+  fi
   mkdir -p "$home"
   chmod 700 "$home"
   export CFFIXED_USER_HOME="$home"
