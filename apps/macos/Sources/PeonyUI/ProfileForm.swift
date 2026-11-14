@@ -22,7 +22,7 @@ public struct ProfileForm: View {
 
   @Binding var draft: ProfileDraft
   let isNew: Bool
-  /// Show every problem at once. Off while adding, where a field's problem waits until you leave it.
+  /// Show every problem at once. Off while adding until Add is pressed, so a field's problem waits until you leave it.
   let revealsAllProblems: Bool
   let missingTool: (name: String, install: String)?
   let saveError: String?
