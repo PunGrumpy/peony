@@ -45,7 +45,10 @@ jobs:
           names="$(bunx turbo ls --affected --output=json | jq -r '.packages.items[].name')"
           # The core package has no app of its own; a change to it marks the macOS app as affected.
           if grep -qx "@peony/macos" <<<"$names"; then echo "macos=true"; else echo "macos=false"; fi >> "$GITHUB_OUTPUT"
-          if grep -qx "web" <<<"$names"; then echo "web=true"; else echo "web=false"; fi >> "$GITHUB_OUTPUT"
+          # The site renders these three app paths, which apps/web/turbo.json lists as inputs too. Keep both lists in step.
+          head="${TURBO_SCM_HEAD:-HEAD}"
+          site_inputs="$(git diff --name-only "$TURBO_SCM_BASE" "$head" -- apps/macos/Design/snapshots apps/macos/CHANGELOG.md apps/macos/package.json)"
+          if grep -qx "web" <<<"$names" || [[ -n "$site_inputs" ]]; then echo "web=true"; else echo "web=false"; fi >> "$GITHUB_OUTPUT"
 
   web:
     needs: check
