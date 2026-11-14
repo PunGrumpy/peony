@@ -22,7 +22,7 @@ public struct ProfileForm: View {
 
   @Binding var draft: ProfileDraft
   let isNew: Bool
-  /// Show every problem at once. Off while adding, where a field's problem waits until you leave it.
+  /// Show every problem at once. Off while adding until Add is pressed, so a field's problem waits until you leave it.
   let revealsAllProblems: Bool
   let missingTool: (name: String, install: String)?
   let saveError: String?
@@ -143,7 +143,7 @@ public struct ProfileForm: View {
       }
       if draft.fortiLogin == .password {
         row("Username", .username, problems) {
-          TextField("Username", text: $draft.fortiUsername)
+          TextField("Username", text: $draft.fortiUsername, prompt: Text("Required"))
         }
         row("Password", .password, problems) {
           SecureField("Password", text: $draft.secret, prompt: Text(passwordPrompt(saved: draft.hasSavedSecret)))
@@ -166,7 +166,7 @@ public struct ProfileForm: View {
         TextField("Server", text: $draft.openConnect.server, prompt: Text("vpn.example.com"))
       }
       row("Username", .username, problems) {
-        TextField("Username", text: $draft.openConnect.username)
+        TextField("Username", text: $draft.openConnect.username, prompt: Text("Required"))
       }
       row("Password", .password, problems) {
         SecureField("Password", text: $draft.secret, prompt: Text(passwordPrompt(saved: draft.hasSavedSecret)))
