@@ -1,0 +1,60 @@
+# This runs on pull_request_target so a pull request from a fork gets a token that can add a label.
+# That token has write access, so this workflow must never check out or run code from the pull request.
+# The title is untrusted text: it reaches the script only through an environment variable.
+name: Label pull request
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label from title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add the label that matches the title type
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.pull_request.title }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          type="${TITLE%%[:(]*}"
+          case "$type" in
+            feat) want=enhancement ;;
+            fix) want=bug ;;
+            docs) want=documentation ;;
+            perf) want=performance ;;
+            test | ci | chore | refactor | style) want=maintenance ;;
+            *) want= ;;
+          esac
+
+          for label in enhancement bug documentation performance maintenance; do
+            if [ "$label" = "$want" ]; then
+              continue
+            fi
+            if ! out=$(gh api --method DELETE "repos/$GH_REPO/issues/$NUMBER/labels/$label" 2>&1); then
+              case "$out" in
+                *"HTTP 404"*) ;;
+                *)
+                  echo "$out" >&2
+                  exit 1
+                  ;;
+              esac
+            fi
+          done
+
+          if [ -n "$want" ]; then
+            gh api --method POST "repos/$GH_REPO/issues/$NUMBER/labels" -f "labels[]=$want"
+          fi
