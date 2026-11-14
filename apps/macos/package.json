@@ -8,6 +8,7 @@
     "package": "./scripts/package-app.sh",
     "install-app": "./scripts/install-app.sh",
     "snapshots": "./scripts/snapshots.sh",
+    "e2e": "./scripts/e2e.sh",
     "icon": "./scripts/icon.sh"
   },
   "devDependencies": {

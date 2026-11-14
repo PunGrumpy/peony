@@ -11,6 +11,7 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "snapshots": "turbo run snapshots",
+    "e2e": "turbo run e2e",
     "icon": "turbo run icon",
     "package": "turbo run package",
     "install-app": "turbo run install-app",

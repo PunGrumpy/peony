@@ -124,6 +124,7 @@ You need [Bun](https://bun.sh) and the Command Line Tools. Xcode isn't required.
 bun install
 bun run dev           # the app and the site (localhost:3000)
 bun run test          # core tests
+bun run e2e           # a real connect and switch, with stand-in VPN clients
 bun run build         # Peony.app and the site
 bun run package       # .dmg, .zip, checksums and the Homebrew cask
 bun run install-app   # build, copy to /Applications, relaunch
