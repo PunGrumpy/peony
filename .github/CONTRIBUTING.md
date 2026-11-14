@@ -30,7 +30,7 @@ The [README](../README.md#develop) lists every task and what lives where.
 
 ## Pull requests
 
-Titles follow [Conventional Commits](https://www.conventionalcommits.org) with a capitalized subject and no scope, for example `fix: Keep the tunnel up when the lid closes`. A check enforces it. The allowed types are `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `style`, `ci`, and `chore`. A workflow labels the pull request from its title, so you don't need to, and you may add `accessibility` yourself when it applies.
+Titles follow [Conventional Commits](https://www.conventionalcommits.org) with a capitalized subject and no scope, for example `fix: Keep the tunnel up when the lid closes`. A check enforces it. The allowed types are `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `style`, `ci`, and `chore`. A workflow labels the pull request from its title, so you don't need to. If the change improves accessibility, say so in the description.
 
 Fill in the pull request template: what changed, and how you tested it. For the macOS app, say which kind of VPN you connected to.
 
