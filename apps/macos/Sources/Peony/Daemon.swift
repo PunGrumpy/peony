@@ -6,8 +6,29 @@ import PeonyCore
 enum AppTools {
   private static let bundled = ["tailscale": "/Applications/Tailscale.app/Contents/MacOS/Tailscale"]
 
+  #if DEBUG
+  /// A folder of stand-in clients for `scripts/e2e.sh`. It only exists in debug builds. With it set the
+  /// folder is the whole world: falling back to a real client would let a test run `tailscale down`.
+  private static let standIns = ProcessInfo.processInfo.environment["PEONY_TOOLS_DIR"]
+  #endif
+
   static func find(_ name: String) -> String? {
-    Tools.find(name) ?? bundled[name].flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil }
+    #if DEBUG
+    if let dir = standIns {
+      let path = "\(dir)/\(name)"
+      return FileManager.default.isExecutableFile(atPath: path) ? path : nil
+    }
+    #endif
+    return Tools.find(name) ?? bundled[name].flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil }
+  }
+
+  /// Where to run a client from, even when it isn't installed, so the launch fails instead of
+  /// quietly running something else.
+  static func executable(_ name: String) -> String {
+    #if DEBUG
+    if let dir = standIns { return "\(dir)/\(name)" }
+    #endif
+    return find(name) ?? "/opt/homebrew/bin/\(name)"
   }
 }
 
@@ -20,7 +41,7 @@ struct Daemon {
   static let netBird = Daemon(tool: "netbird", parse: { try DaemonStatus(netBird: $0) })
   static let tailscale = Daemon(tool: "tailscale", parse: { try DaemonStatus(tailscale: $0) })
 
-  var executable: String { AppTools.find(tool) ?? "/opt/homebrew/bin/\(tool)" }
+  var executable: String { AppTools.executable(tool) }
 
   /// Nil when the client isn't there or the service doesn't answer.
   func status() async -> DaemonStatus? {
