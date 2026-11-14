@@ -21,6 +21,9 @@
     "snapshots": {
       "cache": false
     },
+    "e2e": {
+      "cache": false
+    },
     "icon": {
       "cache": false
     }
