@@ -69,6 +69,10 @@ let states: [(String, PanelState)] = [
     routes: routes, activeRouteID: client.id,
     connection: .failed(TunnelFailure(
       message: "Peony needs a one-time admin approval to set up routes and DNS for VPNs.", fix: .installHelper)))),
+  ("failed-helper-install", PanelState(
+    routes: routes, activeRouteID: client.id,
+    connection: .failed(TunnelFailure(
+      message: "The helper wasn't installed. The administrator user name or password was incorrect.", fix: .installHelper)))),
 ]
 
 @MainActor func render(_ view: some View, dark: Bool, to url: URL) {

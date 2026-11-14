@@ -161,8 +161,11 @@ final class AppModel {
         try HelperInstaller.install()
         refreshHelperStatus()
         if let id = connection.profileID { connect(id) }
+      } catch let error as HelperInstaller.InstallError where error.isCancelled {
+        // The person dismissed the password prompt, so there is nothing to report.
       } catch {
         logger.error("Helper install failed: \(error.localizedDescription, privacy: .public)")
+        connection.fixDidNotWork("The helper wasn't installed. \(error.localizedDescription)")
       }
     case .installTool(_, let command):
       Terminal.run(command)
@@ -211,6 +214,8 @@ final class AppModel {
   func installHelper() {
     do {
       try HelperInstaller.install()
+      helperNotice = nil
+    } catch let error as HelperInstaller.InstallError where error.isCancelled {
       helperNotice = nil
     } catch {
       helperNotice = error.localizedDescription

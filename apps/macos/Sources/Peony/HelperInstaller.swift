@@ -53,9 +53,17 @@ enum HelperInstaller {
 
   struct InstallError: LocalizedError {
     let message: String
-    init(_ message: String) { self.message = message }
+    /// The person dismissed the password prompt, so nothing went wrong.
+    let isCancelled: Bool
+    init(_ message: String, isCancelled: Bool = false) {
+      self.message = message
+      self.isCancelled = isCancelled
+    }
     var errorDescription: String? { message }
   }
+
+  /// AppleScript's error number for "User canceled."
+  private static let userCancelledErrorNumber = -128
 
   private static func runAsAdmin(_ shell: String) throws {
     let escaped = shell.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
@@ -63,7 +71,9 @@ enum HelperInstaller {
     var error: NSDictionary?
     NSAppleScript(source: source)?.executeAndReturnError(&error)
     if let error {
-      throw InstallError(error[NSAppleScript.errorMessage] as? String ?? "The admin command failed.")
+      throw InstallError(
+        error[NSAppleScript.errorMessage] as? String ?? "The admin command failed.",
+        isCancelled: error[NSAppleScript.errorNumber] as? Int == userCancelledErrorNumber)
     }
   }
 

@@ -314,6 +314,13 @@ final class Connection {
     logger.notice("\(result.summary, privacy: .public)")
   }
 
+  /// Replaces the shown failure's message after its fix button was tried and didn't work. The fix stays offered.
+  func fixDidNotWork(_ message: String) {
+    guard case .failed(var failure) = state else { return }
+    failure.message = message
+    state = .failed(failure)
+  }
+
   // MARK: Monitoring
 
   /// Called on every interface change. Tunnels without a supervising process
