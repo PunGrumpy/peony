@@ -11,6 +11,9 @@ public struct PanelState: Equatable, Sendable {
   public var connection: TunnelState
   /// When the active route came up, for the running timer.
   public var connectedSince: Date?
+  /// Freezes the running timer at this moment. Snapshots set it so the image
+  /// doesn't follow the clock. The app leaves it nil.
+  public var timerPausedAt: Date?
   /// How long the switch took, as `Ready in 2.4 s`. Nil for a tunnel Peony adopted.
   public var readyIn: String?
   public var destinations: [DestinationStatus]
@@ -22,6 +25,7 @@ public struct PanelState: Equatable, Sendable {
     nextRouteID: UUID? = nil,
     connection: TunnelState = .off,
     connectedSince: Date? = nil,
+    timerPausedAt: Date? = nil,
     readyIn: String? = nil,
     destinations: [DestinationStatus] = [],
     opensAtLogin: Bool = false
@@ -31,6 +35,7 @@ public struct PanelState: Equatable, Sendable {
     self.nextRouteID = nextRouteID
     self.connection = connection
     self.connectedSince = connectedSince
+    self.timerPausedAt = timerPausedAt
     self.readyIn = readyIn
     self.destinations = destinations
     self.opensAtLogin = opensAtLogin
