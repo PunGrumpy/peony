@@ -154,7 +154,7 @@ private struct Hero: View {
     case .connecting: "Connecting to \(name)"
     case .disconnecting: state.nextRoute.map { "Switching to \($0.name)" } ?? "Disconnecting"
     case .on: "Connected to \(name)"
-    case .failed: "Couldn't connect to \(name)"
+    case .failed(let failure): failure.wasConnected ? "Disconnected from \(name)" : "Couldn't connect to \(name)"
     case .off: "Not connected"
     }
   }

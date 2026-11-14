@@ -35,10 +35,13 @@ public struct TunnelFailure: Equatable, Sendable {
   public var message: String
   /// The one thing most likely to fix it, offered as the primary button.
   public var fix: Fix?
+  /// The tunnel was up when this happened.
+  public var wasConnected: Bool
 
-  public init(message: String, fix: Fix? = nil) {
+  public init(message: String, fix: Fix? = nil, wasConnected: Bool = false) {
     self.message = message
     self.fix = fix
+    self.wasConnected = wasConnected
   }
 
   public enum Fix: Equatable, Sendable {
