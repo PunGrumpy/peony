@@ -7,20 +7,24 @@ public struct MenuBarLabel: View {
   let filledPetals: Int
   let title: String?
   let alert: Bool
+  let status: String
 
   /// - Parameters:
   ///   - filledPetals: 0 (all faint) when off, `PeonyMark.shapeCount` when on, 1 while connecting.
   ///   - title: The tunnel's name while one is up or coming up.
   ///   - alert: The VPN failed to connect or dropped, so the flower carries an exclamation mark.
-  public init(filledPetals: Int, title: String?, alert: Bool = false) {
+  ///   - status: What VoiceOver says for the flower, such as "Peony, connected to Work".
+  public init(filledPetals: Int, title: String?, alert: Bool = false, status: String) {
     self.filledPetals = filledPetals
     self.title = title
     self.alert = alert
+    self.status = status
   }
 
   public var body: some View {
     // MenuBarExtra renders an Image + Text label as icon and title, like the system's own items.
     Image(nsImage: MenuBarGlyph.image(filledPetals: filledPetals, alert: alert))
+      .accessibilityLabel(status)
     if let title {
       Text(title)
     }
