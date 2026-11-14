@@ -19,6 +19,8 @@ bun run dev --filter=web            # the site, on localhost:3000
 bun run test                        # core tests: validation, parsers, helper safety
 ```
 
+The debug app keeps its own VPN list in a throwaway home, so it runs beside the installed Peony and never stops it. Connecting or disconnecting from the debug app still acts on your Mac's real tunnels, so a VPN that is already up can be adopted and then stopped from it. Run `apps/macos/scripts/run.sh --installed-home` to use your real home instead.
+
 The [README](../README.md#develop) lists every task and what lives where.
 
 ## Making a change

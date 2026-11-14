@@ -133,6 +133,8 @@ bun run icon          # regenerate the app icon
 
 Add `--filter=@peony/macos` or `--filter=web` to run a task for one of them.
 
+The debug app keeps its own VPN list in a throwaway home (`/tmp/peony-dev-<uid>`, or `$PEONY_DEV_HOME`), so it runs beside the installed Peony and never stops it. Connecting or disconnecting from the debug app still acts on your Mac's real tunnels, so a VPN that is already up can be adopted and then stopped from it. Run `apps/macos/scripts/run.sh --installed-home` to stop the installed Peony and use your real home instead.
+
 | Path | What |
 | --- | --- |
 | `packages/core` | Profiles, validation, log parsers and reachability, shared with the helper. Has the tests. |
