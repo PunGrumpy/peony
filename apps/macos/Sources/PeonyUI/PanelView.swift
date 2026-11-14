@@ -170,7 +170,7 @@ private struct Hero: View {
               .textSelection(.enabled)
             if let since = state.connectedSince {
               Text("·").foregroundStyle(Brand.muted)
-              Text(timerInterval: since...Date.distantFuture, countsDown: false)
+              Text(timerInterval: since...Date.distantFuture, pauseTime: state.timerPausedAt, countsDown: false)
                 .foregroundStyle(Brand.muted)
             }
           }

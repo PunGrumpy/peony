@@ -45,7 +45,8 @@ let lab = Route(name: "Lab", kind: .netBird, endpoint: "netbird.acme.co")
 let client = Route(name: "Client", kind: .openConnect, endpoint: "connect.client.com")
 let home = Route(name: "Home", kind: .wireGuard, endpoint: "peony0")
 let routes = [work, lab, client, home]
-let since = Date.now.addingTimeInterval(-754)
+let since = Date(timeIntervalSince1970: 1_700_000_000)
+let pausedAt = since.addingTimeInterval(754)
 
 let states: [(String, PanelState)] = [
   ("welcome", PanelState()),
@@ -53,7 +54,7 @@ let states: [(String, PanelState)] = [
   ("connecting", PanelState(routes: routes, activeRouteID: work.id, connection: .connecting)),
   ("switching", PanelState(routes: routes, activeRouteID: work.id, nextRouteID: lab.id, connection: .disconnecting)),
   ("live", PanelState(
-    routes: routes, activeRouteID: work.id, connection: .on(address: "10.122.0.8"), connectedSince: since, readyIn: "Ready in 2.4 s",
+    routes: routes, activeRouteID: work.id, connection: .on(address: "10.122.0.8"), connectedSince: since, timerPausedAt: pausedAt, readyIn: "Ready in 2.4 s",
     destinations: [
       DestinationStatus(host: "gitlab.acme.co", reachability: .reachable(milliseconds: 23)),
       DestinationStatus(host: "10.11.219.9", reachability: .reachable(milliseconds: 31)),
