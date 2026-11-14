@@ -329,7 +329,7 @@ private struct RouteRow: View {
     case .failed: Tag(text: "Failed", color: Brand.warning)
     case .off:
       if let shortcut {
-        Text("⌘\(shortcut)").font(Typeface.mono).foregroundStyle(Brand.muted.opacity(0.7))
+        Text("⌘\(shortcut)").font(Typeface.mono).foregroundStyle(Brand.muted)
       }
     }
   }
@@ -383,7 +383,7 @@ private struct AddRow: View {
         Text("Add VPN")
           .font(Typeface.body)
         Spacer()
-        Text("⌘N").font(Typeface.mono).foregroundStyle(Brand.muted.opacity(0.7))
+        Text("⌘N").font(Typeface.mono).foregroundStyle(Brand.muted)
       }
       .foregroundStyle(hovering ? Brand.ink : Brand.muted)
       .padding(.horizontal, 8)
