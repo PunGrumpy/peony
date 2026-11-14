@@ -2,7 +2,8 @@
 # Drives a real connect, switch and disconnect through the debug app and the
 # `peony` command. The app runs in a temp home and finds its VPN clients only in
 # a temp folder of stand-ins (PEONY_TOOLS_DIR, debug builds only), so no real
-# tunnel is touched and nothing outside the two temp folders is written.
+# tunnel is touched. Nothing outside the two temp folders is written except one
+# preferences file, ~/Library/Preferences/PeonyE2E.plist, which is deleted on exit.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -29,6 +30,9 @@ cleanup() {
     kill -9 "$app" 2>/dev/null
     wait "$app" 2>/dev/null
   fi
+  defaults delete PeonyE2E 2>/dev/null || true
+  # `defaults delete` empties the domain but leaves a zero-key plist behind.
+  rm -f "$HOME/Library/Preferences/PeonyE2E.plist"
   rm -rf "$home" "$tools"
 }
 trap cleanup EXIT
@@ -88,7 +92,11 @@ EOF
 # Without CFFIXED_USER_HOME this would talk to the installed Peony.
 peony() { CFFIXED_USER_HOME="$home" "$bin/peony-cli" "$@"; }
 
-CFFIXED_USER_HOME="$home" PEONY_TOOLS_DIR="$tools" "$bin/Peony" > "$home/app.log" 2>&1 &
+# Preferences ignore CFFIXED_USER_HOME and are named after the executable. Under its own name the app would
+# read and write the debug domain `Peony` (including globalShortcuts), so run a copy under a name of its own.
+cp "$bin/Peony" "$tools/PeonyE2E"
+defaults delete PeonyE2E 2>/dev/null || true
+CFFIXED_USER_HOME="$home" PEONY_TOOLS_DIR="$tools" "$tools/PeonyE2E" > "$home/app.log" 2>&1 &
 app=$!
 
 # connect and disconnect open the installed Peony when nothing answers, so send nothing but status until it does.
