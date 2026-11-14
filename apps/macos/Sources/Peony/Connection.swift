@@ -168,7 +168,13 @@ final class Connection {
   private func bringUp(_ daemon: Daemon, attempt current: Int, arguments: [String], fallback: String) async {
     let result = try? await Command.run(daemon.executable, arguments: arguments)
     // The client can return long after another VPN replaced this one. The log, the state and the parser are the newer one's.
-    guard attempt == current else { return }
+    guard attempt == current else {
+      // It came up after the person moved on. A newer VPN on the same client owns that client, so only another one's is turned off.
+      if result?.succeeded == true, kind?.daemon?.tool != daemon.tool {
+        _ = try? await Command.run(daemon.executable, "down")
+      }
+      return
+    }
     appendLog(result?.text ?? "")
     await refreshDaemon()
     guard attempt == current, state == .connecting else { return }
