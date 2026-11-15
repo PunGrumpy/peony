@@ -94,7 +94,7 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bunx turbo run test package --filter=@peony/core --filter=@peony/macos
-      # pungrumpy/homebrew-tap reads SHA256SUMS from this release to update the cask.
+      # pungrumpy/homebrew-tap copies peony.rb from this release, so the cask keeps up with Casks/peony.rb.in.
       - name: Publish the app and release notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -111,7 +111,7 @@ jobs:
             # Changesets skips the release when the package has no CHANGELOG.md yet.
             gh release create "$tag" --verify-tag --title "Peony $version" --notes-file notes.md
           fi
-          gh release upload "$tag" "apps/macos/dist/Peony-$version.dmg" "apps/macos/dist/Peony-$version.zip" apps/macos/dist/SHA256SUMS --clobber
+          gh release upload "$tag" "apps/macos/dist/Peony-$version.dmg" "apps/macos/dist/Peony-$version.zip" apps/macos/dist/SHA256SUMS apps/macos/dist/peony.rb --clobber
       # Vercel doesn't deploy main on its own, so the site never links to a download that isn't there yet.
       - name: Deploy the website
         run: curl --fail --silent --show-error --request POST "$DEPLOY_HOOK"
