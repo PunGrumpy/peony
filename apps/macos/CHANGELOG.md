@@ -1,5 +1,18 @@
 # @peony/macos
 
+## 0.4.0
+
+### Minor Changes
+
+- 62909b1: A VPN that drops or fails to connect now shows in the menu bar: the flower gets a small alert mark instead of looking turned off. The panel says "Disconnected from Work" when a tunnel that was up goes away.
+
+### Patch Changes
+
+- cfb2f6a: Adding a VPN now says what is still missing: press Add and each empty or invalid field explains itself, and the Username field shows that it's required.
+- fa7daed: If installing the helper fails, the panel now says why instead of doing nothing. Cancelling the password prompt while installing the helper is no longer shown as an error.
+- 0e2cf6e: The panel's grey text is darker and easier to read.
+- c4cde95: Picking another VPN while NetBird or Tailscale is still connecting no longer marks the new one as failed.
+
 ## 0.3.0
 
 ### Minor Changes
