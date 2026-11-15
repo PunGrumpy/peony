@@ -38,7 +38,7 @@ A person has to check a real VPN, the administrator prompt, a browser sign-in, V
 - Don't add a label. `label-pr.yml` sets one from the title: `feat` is `enhancement`, `fix` is `bug`, `docs` is `documentation`, `perf` is `performance`, and `test`, `ci`, `chore`, `refactor` and `style` are `maintenance`. If a change improves accessibility, say so in the description, and someone with triage access adds `accessibility`.
 - Write the body to `.github/pull_request_template.md`. It has a `### Description` and a `### Testing Instructions`. Name the kind of VPN you connected, or say you connected none.
 - If people will notice the change in the app, add a changeset with `bun changeset`, for `@peony/macos` only. `@peony/core` and `web` are ignored in `.changeset/config.json`.
-- If you change what the root helper accepts, validate it in `packages/core` and add a test that shows what it refuses. If you change the helper's behaviour, raise `Helper.version` (`packages/core/Sources/PeonyCore/Helper.swift`) so the app reinstalls it.
+- If you change what the root helper accepts, validate it in `packages/core` and add a test that shows what it refuses. If you change the helper's behaviour, raise `Helper.version` (`packages/core/Sources/PeonyCore/Helper.swift`). The app then sees the installed helper as out of date and asks the person to install the new one.
 - If you change a panel or Settings, include the new snapshots, and a screenshot in the pull request.
 - Don't widen the control socket without a security review. It reads status, connects a VPN by name and disconnects, and nothing else.
 
