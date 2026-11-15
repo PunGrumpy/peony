@@ -15,7 +15,7 @@ public enum Brand {
   public static let hairline = adaptive(light: 0x1C0D12, dark: 0xFFFFFF, alpha: 0.08)
   /// A muted peony rose, used only for "this is live".
   public static let rose = adaptive(light: 0xC85C7C, dark: 0xE07C98)
-  public static let warning = adaptive(light: 0xAD4F27, dark: 0xE88B5E)
+  public static let warning = adaptive(light: 0xAF4E25, dark: 0xE88B5E)
 
   static func adaptive(light: UInt32, dark: UInt32, alpha: CGFloat = 1) -> Color {
     Color(nsColor: NSColor(name: nil) { appearance in
