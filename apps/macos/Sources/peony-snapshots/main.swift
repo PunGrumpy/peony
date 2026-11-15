@@ -3,6 +3,7 @@
 //
 //   peony-snapshots panels <dir>   every panel state and Settings pane, light and dark
 //   peony-snapshots icon <dir>     AppIcon.iconset and a 1024px preview
+//   peony-snapshots contrast       the palette's contrast ratios; exits 1 if text misses its floor
 import AppKit
 import PeonyCore
 import PeonyUI
@@ -122,6 +123,55 @@ if mode == "icon" {
   writePNG(sheet, scale: 3, to: output.appending(path: "mark-sheet.png"))
   print("Wrote \(iconset.path)")
   exit(0)
+}
+
+if mode == "contrast" {
+  // Apple's floor for text up to 17 points. Rose is the brand's accent and is only reported.
+  let appearances: [(label: String, name: NSAppearance.Name, text: Double, accent: Double?)] = [
+    ("light", .aqua, 4.5, nil),
+    ("dark", .darkAqua, 4.5, nil),
+  ]
+  let pairs = [
+    ("muted", "paper"), ("muted", "well"), ("muted", "surface"),
+    ("ink", "paper"), ("ink", "well"), ("ink", "surface"),
+    ("warning", "well"), ("paper", "ink"), ("rose", "surface"),
+  ]
+  let palette = [
+    "ink": Brand.ink, "paper": Brand.paper, "surface": Brand.surface, "chip": Brand.chip,
+    "muted": Brand.muted, "rose": Brand.rose, "warning": Brand.warning,
+  ]
+
+  func luminance(_ rgb: [Double]) -> Double {
+    let linear = rgb.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+  }
+
+  var passes = true
+  for appearance in appearances {
+    var rgba: [String: [Double]] = [:]
+    NSAppearance(named: appearance.name)!.performAsCurrentDrawingAppearance {
+      for (name, color) in palette {
+        let srgb = NSColor(color).usingColorSpace(.sRGB)!
+        rgba[name] = [srgb.redComponent, srgb.greenComponent, srgb.blueComponent, srgb.alphaComponent].map(Double.init)
+      }
+    }
+    // A well is chip drawn over paper.
+    let chip = rgba["chip"]!, paper = rgba["paper"]!
+    rgba["well"] = (0..<3).map { chip[$0] * chip[3] + paper[$0] * (1 - chip[3]) }
+
+    for (text, background) in pairs {
+      let (a, b) = (luminance(rgba[text]!), luminance(rgba[background]!))
+      let ratio = (max(a, b) + 0.05) / (min(a, b) + 0.05)
+      let floor = text == "rose" ? appearance.accent : appearance.text
+      let fails = floor.map { ratio < $0 } ?? false
+      if fails { passes = false }
+      let verdict = floor.map { fails ? "under \($0)" : "≥ \($0)" } ?? "no floor"
+      print(appearance.label.padding(toLength: 16, withPad: " ", startingAt: 0)
+        + "\(text) on \(background)".padding(toLength: 20, withPad: " ", startingAt: 0)
+        + String(format: "%6.2f  ", ratio) + verdict)
+    }
+  }
+  exit(passes ? 0 : 1)
 }
 
 for (name, state) in states {

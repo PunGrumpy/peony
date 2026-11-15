@@ -11,11 +11,11 @@ public enum Brand {
   public static let surface = adaptive(light: 0xFFFFFF, dark: 0x373134)
   /// Resting cards and chips: a wash of ink, so it reads on the material in both modes.
   public static let chip = adaptive(light: 0x1C0D12, dark: 0xFFFFFF, alpha: 0.055)
-  public static let muted = adaptive(light: 0x8E8689, dark: 0x8A8285)
+  public static let muted = adaptive(light: 0x71696C, dark: 0xA29A9D)
   public static let hairline = adaptive(light: 0x1C0D12, dark: 0xFFFFFF, alpha: 0.08)
   /// A muted peony rose, used only for "this is live".
   public static let rose = adaptive(light: 0xC85C7C, dark: 0xE07C98)
-  public static let warning = adaptive(light: 0xB4532A, dark: 0xE88B5E)
+  public static let warning = adaptive(light: 0xAF4E25, dark: 0xE88B5E)
 
   static func adaptive(light: UInt32, dark: UInt32, alpha: CGFloat = 1) -> Color {
     Color(nsColor: NSColor(name: nil) { appearance in
