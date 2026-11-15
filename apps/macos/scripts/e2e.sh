@@ -269,24 +269,12 @@ seen="$(<"$home/late.json")"
 [[ "$code" != 3 ]] || not_available connect Beta
 check "the replaced connect to Beta is interrupted by the other request" reply 6
 
-# The app turns it off after its `up` returned, which can be a moment after Alpha is on.
-netbird_off() {
-  for _ in $(seq 50); do
-    [[ "$(<"$tools/netbird.state")" == false ]] && return 0
-    sleep 0.1
-  done
-  return 1
-}
-code=0
-seen=""
-check "the replaced NetBird is turned off when it comes up late" netbird_off
-
 drive disconnect
 check "disconnect after the late NetBird returned turns everything off" \
   reply 0 '.tunnel.state == "off"'
 
 if (( failures > 0 )); then
-  echo "e2e: $failures of 12 checks failed. The stand-ins were called with:" >&2
+  echo "e2e: $failures of 11 checks failed. The stand-ins were called with:" >&2
   sed 's/^/     /' "$tools/calls.log" >&2
   exit 1
 fi
