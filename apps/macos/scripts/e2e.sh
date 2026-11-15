@@ -21,6 +21,8 @@ bin="$(swift build --show-bin-path)"
 home="$(mktemp -d /tmp/peony-e2e.XXXXXX)"
 tools="$(mktemp -d /tmp/peony-e2e-tools.XXXXXX)"
 app=""
+late=""
+alpha=""
 
 # The process with this PID is still the test app, not something that took the PID after it exited.
 is_test_app() { [[ "$(ps -o comm= -p "$app" 2>/dev/null)" == *PeonyE2E ]]; }
@@ -29,6 +31,11 @@ cleanup() {
   # A second Ctrl-C must not cut this short and leave the app or the temp folders behind.
   trap '' INT TERM
   set +e
+  # Before the app goes: a client that outlives it would run `open -g -b app.peony.Peony` and start the installed Peony.
+  for pid in $late $alpha; do
+    kill "$pid" 2>/dev/null
+    wait "$pid" 2>/dev/null
+  done
   if [[ -n "$app" ]]; then
     is_test_app && kill "$app" 2>/dev/null
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
@@ -54,7 +61,9 @@ echo "tailscale $*" >> "$dir/calls.log"
 state="$dir/tailscale.state"
 case "$*" in
   "status --json") printf '{"BackendState":"%s","Self":{"TailscaleIPs":["100.64.0.1"]}}\n' "$(cat "$state")" ;;
-  "up") echo Running > "$state" ;;
+  "up")
+    [[ -e "$dir/tailscale.slow" ]] && sleep 2
+    echo Running > "$state" ;;
   "down") echo Stopped > "$state" ;;
   *) exit 1 ;;
 esac
@@ -67,8 +76,17 @@ echo "netbird $*" >> "$dir/calls.log"
 state="$dir/netbird.state"
 case "$*" in
   "status --json") printf '{"management":{"connected":%s},"netbirdIp":"100.92.0.2/16"}\n' "$(cat "$state")" ;;
-  "up") echo true > "$state" ;;
-  "down") echo false > "$state" ;;
+  "up")
+    # While netbird.hold exists, `up` waits like a client held on a browser sign-in, then takes a moment to return.
+    held=""
+    for _ in $(seq 200); do
+      [[ -e "$dir/netbird.hold" ]] || break
+      held=1
+      sleep 0.1
+    done
+    [[ -z "$held" ]] || sleep 0.5
+    echo true > "$state" ;;
+  "down") rm -f "$dir/netbird.hold"; echo false > "$state" ;;
   *) exit 1 ;;
 esac
 EOF
@@ -118,19 +136,25 @@ seen=""
 failures=0
 
 # connect and disconnect open the installed Peony when nothing answers, so never send one once the test app is gone.
-drive() {
+require_test_app() {
   if ! kill -0 "$app" 2>/dev/null; then
     echo "e2e: the test app (pid $app) is gone, so nothing more is sent: connect would open the installed Peony. Its output:" >&2
     cat "$home/app.log" >&2
     exit 1
   fi
+}
+
+not_available() {
+  echo "e2e: Peony isn't available (peony $* exited 3), so the run stops here. The app's output:" >&2
+  cat "$home/app.log" >&2
+  exit 1
+}
+
+drive() {
+  require_test_app
   code=0
   seen="$(peony "$@" --json 2>&1)" || code=$?
-  if [[ "$code" == 3 ]]; then
-    echo "e2e: Peony isn't available (peony $* exited 3), so the run stops here. The app's output:" >&2
-    cat "$home/app.log" >&2
-    exit 1
-  fi
+  [[ "$code" != 3 ]] || not_available "$@"
 }
 
 # reply <exit code> [jq filter]: the last reply exited with that code and its JSON satisfies the filter.
@@ -197,8 +221,60 @@ check "disconnect turns NetBird off" disconnected
 drive connect Nope
 check "an unknown name exits 4" reply 4
 
+# NetBird is held on a sign-in and Tailscale is slow, so NetBird's `up` returns while Alpha is still connecting.
+# Both clients start directly, not through `peony`: through the function $! would be a subshell, and killing it leaves peony-cli running.
+touch "$tools/netbird.hold" "$tools/tailscale.slow"
+ups="$(called "netbird up")"
+require_test_app
+CFFIXED_USER_HOME="$home" "$bin/peony-cli" connect Beta --timeout 15 --json > "$home/late.json" 2>&1 &
+late=$!
+for _ in $(seq 100); do
+  [[ "$(called "netbird up")" -gt "$ups" ]] && break
+  kill -0 "$late" 2>/dev/null || break
+  sleep 0.1
+done
+
+# `peony connect` only looks once its own connect has finished, so a failure shown in between is
+# visible to the panel and `peony status` alone.
+require_test_app
+CFFIXED_USER_HOME="$home" "$bin/peony-cli" connect Alpha --timeout 15 --json > "$home/alpha.json" 2>&1 &
+alpha=$!
+failed_meanwhile=""
+while kill -0 "$alpha" 2>/dev/null; do
+  drive status
+  reply 0 '.tunnel.state == "failed"' && failed_meanwhile="$seen"
+  sleep 0.1
+done
+
+alpha_code=0
+wait "$alpha" || alpha_code=$?
+alpha=""
+late_code=0
+wait "$late" || late_code=$?
+late=""
+rm -f "$tools/netbird.hold" "$tools/tailscale.slow"
+
+code=$alpha_code
+seen="$(<"$home/alpha.json")"
+[[ "$code" != 3 ]] || not_available connect Alpha
+check "picking Alpha while NetBird is still connecting leaves Alpha on" \
+  reply 0 '.outcome == "done" and .tunnel.state == "on" and .tunnel.vpn.name == "Alpha"'
+
+code=0
+seen="$failed_meanwhile"
+check "Alpha never shows a failure while it connects" [ -z "$failed_meanwhile" ]
+
+code=$late_code
+seen="$(<"$home/late.json")"
+[[ "$code" != 3 ]] || not_available connect Beta
+check "the replaced connect to Beta is interrupted by the other request" reply 6
+
+drive disconnect
+check "disconnect after the late NetBird returned turns everything off" \
+  reply 0 '.tunnel.state == "off"'
+
 if (( failures > 0 )); then
-  echo "e2e: $failures of 7 checks failed. The stand-ins were called with:" >&2
+  echo "e2e: $failures of 11 checks failed. The stand-ins were called with:" >&2
   sed 's/^/     /' "$tools/calls.log" >&2
   exit 1
 fi
