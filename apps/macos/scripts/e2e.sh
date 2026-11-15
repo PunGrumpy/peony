@@ -31,6 +31,7 @@ cleanup() {
   # A second Ctrl-C must not cut this short and leave the app or the temp folders behind.
   trap '' INT TERM
   set +e
+  # Before the app goes: a client that outlives it would run `open -g -b app.peony.Peony` and start the installed Peony.
   for pid in $late $alpha; do
     kill "$pid" 2>/dev/null
     wait "$pid" 2>/dev/null
@@ -221,10 +222,11 @@ drive connect Nope
 check "an unknown name exits 4" reply 4
 
 # NetBird is held on a sign-in and Tailscale is slow, so NetBird's `up` returns while Alpha is still connecting.
+# Both clients start directly, not through `peony`: through the function $! would be a subshell, and killing it leaves peony-cli running.
 touch "$tools/netbird.hold" "$tools/tailscale.slow"
 ups="$(called "netbird up")"
 require_test_app
-peony connect Beta --timeout 15 --json > "$home/late.json" 2>&1 &
+CFFIXED_USER_HOME="$home" "$bin/peony-cli" connect Beta --timeout 15 --json > "$home/late.json" 2>&1 &
 late=$!
 for _ in $(seq 100); do
   [[ "$(called "netbird up")" -gt "$ups" ]] && break
@@ -235,7 +237,7 @@ done
 # `peony connect` only looks once its own connect has finished, so a failure shown in between is
 # visible to the panel and `peony status` alone.
 require_test_app
-peony connect Alpha --timeout 15 --json > "$home/alpha.json" 2>&1 &
+CFFIXED_USER_HOME="$home" "$bin/peony-cli" connect Alpha --timeout 15 --json > "$home/alpha.json" 2>&1 &
 alpha=$!
 failed_meanwhile=""
 while kill -0 "$alpha" 2>/dev/null; do
