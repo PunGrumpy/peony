@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Packages build/Peony.app into dist/ as a .dmg for people, a .zip for updaters, and SHA256SUMS,
-# then prints the Homebrew cask for pungrumpy/homebrew-tap. Run scripts/build-app.sh first.
+# then writes dist/peony.rb, the cask the release publishes for pungrumpy/homebrew-tap. Run scripts/build-app.sh first.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
